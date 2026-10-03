@@ -24,11 +24,12 @@ def connect():
 def setting(db,key,default):
     row=db.execute('SELECT value FROM settings WHERE key=?',(key,)).fetchone()
     return row[0] if row else default
-def openings(db,day,duration):
+def openings(db,day,duration,extra=()):
     start=datetime.combine(day,datetime.min.time()).replace(hour=10)
     close=start.replace(hour=23)
     margin=timedelta(minutes=30)
     occupied=db.execute('SELECT start,end FROM slots WHERE start < ? AND end > ?',((close+margin).isoformat(),(start-margin).isoformat())).fetchall()
+    occupied=list(occupied)+list(extra)
     result=[]
     while start+timedelta(hours=duration)<=close:
         end=start+timedelta(hours=duration)

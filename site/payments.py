@@ -42,6 +42,12 @@ def checkout(data,connect,openings,setting):
     except (KeyError,ValueError,TypeError):raise PaymentError('Vérifiez la date, le créneau et l’adresse de votre événement. Réservez au plus tôt demain.')
     pricing=json.loads((ROOT/'public/pricing.json').read_text());total=pricing['packages'][str(duration)]['price_cents'];due=total if mode=='full' else (total*pricing['deposit_percent']+50)//100
     booking_id=secrets.token_hex(16);end=start+timedelta(hours=duration)
+    import apple_calendar
+    try:external=apple_calendar.busy(start.date(),start.date()+timedelta(days=1),fresh=True)
+    except apple_calendar.CalendarUnavailable:raise PaymentError('Agenda Apple temporairement indisponible. Réessayez avant de payer.') from None
+    original_openings=openings
+    if apple_calendar.enabled():
+        openings=lambda db,day,hours:original_openings(db,day,hours,extra=external)
     with connect() as db:
         schema(db);db.execute('BEGIN IMMEDIATE')
         if setting(db,'ready','false')!='true':raise PaymentError('Le planning réel doit être renseigné avant toute réservation.')

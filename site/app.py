@@ -1,9 +1,9 @@
 """Production WSGI entrypoint for Render. Only public/ is served as static content."""
 import calendar
-from datetime import date
+from datetime import date,timedelta
 from pathlib import Path
 from flask import Flask,request,jsonify,send_from_directory
-import payments,server
+import payments,server,apple_calendar
 ROOT=Path(__file__).resolve().parent
 app=Flask(__name__,static_folder=str(ROOT/'public'),static_url_path='/assets')
 app.config['MAX_CONTENT_LENGTH']=65536
@@ -23,7 +23,7 @@ def files(filename):return send_from_directory(ROOT/'public',filename)
 @app.get('/api/payment-status')
 def payment_status():
     enabled=False
-    if payments.ready() and payments.config().get('DATABASE_URL'):
+    if payments.ready() and payments.config().get('DATABASE_URL') and (not apple_calendar.enabled() or apple_calendar.configured()):
         try:
             with server.connect() as db:enabled=server.setting(db,'ready','false')=='true'
         except Exception:pass
@@ -38,11 +38,17 @@ def availability():
     items={};ready=False
     if payments.config().get('DATABASE_URL'):
         try:
+            external=apple_calendar.busy(date(year,month,1),date(year,month,count)+timedelta(days=1))
+            try:apple_calendar.export_pending(server.connect)
+            except apple_calendar.CalendarUnavailable:app.logger.warning('Export iCloud en attente de reprise.')
             with server.connect() as db:
                 ready=server.setting(db,'ready','false')=='true'
                 for n in range(1,count+1):
-                    day=date(year,month,n);slots=server.openings(db,day,duration) if ready else []
+                    day=date(year,month,n);slots=server.openings(db,day,duration,extra=external) if ready else []
                     items[day.isoformat()]={'state':('free' if len(slots)==(13-duration)*2+1 else 'partial' if slots else 'full') if ready else 'unknown','slots':slots}
+        except apple_calendar.CalendarUnavailable as e:
+            app.logger.warning('Agenda Apple: %s',str(e))
+            return jsonify(error='Agenda Apple temporairement indisponible. Réessayez dans quelques instants.'),503
         except Exception:return jsonify(error='Planning temporairement indisponible.'),503
     else:
         items={date(year,month,n).isoformat():{'state':'unknown','slots':[]} for n in range(1,count+1)}
@@ -60,6 +66,9 @@ def webhook():
     if not payments.config().get('DATABASE_URL'):return jsonify(error='Planning persistant non connecté.'),503
     try:
         payments.webhook(request.get_data(),request.headers.get('Stripe-Signature',''),server.connect)
+        # DB confirmation is durable before exporting. A 503 makes Stripe retry;
+        # the idempotent webhook then retries the pending export without a new charge.
+        apple_calendar.export_pending(server.connect)
         return jsonify(received=True)
     except payments.PaymentError as e:return jsonify(error=str(e)),400
     except Exception:return jsonify(error='Traitement temporairement indisponible.'),503
