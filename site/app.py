@@ -40,7 +40,7 @@ def availability():
         try:
             external=apple_calendar.busy(date(year,month,1),date(year,month,count)+timedelta(days=1))
             try:apple_calendar.export_pending(server.connect)
-            except apple_calendar.CalendarUnavailable:app.logger.warning('Export iCloud en attente de reprise.')
+            except apple_calendar.CalendarUnavailable as e:app.logger.warning('Export iCloud en attente de reprise: %s',str(e))
             with server.connect() as db:
                 ready=server.setting(db,'ready','false')=='true'
                 for n in range(1,count+1):

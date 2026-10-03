@@ -43,9 +43,9 @@ def calendar_connection():
             yield cal
     except CalendarUnavailable:
         raise
-    except Exception:
+    except Exception as exc:
         # Never expose CalDAV exceptions: they may contain credentials or event data.
-        raise CalendarUnavailable('Synchronisation iCloud temporairement indisponible.') from None
+        raise CalendarUnavailable('Synchronisation iCloud temporairement indisponible (' + type(exc).__name__ + ').') from None
 
 def local(value):
     if isinstance(value, datetime):
