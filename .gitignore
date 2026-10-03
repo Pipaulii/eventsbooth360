@@ -1,0 +1,16 @@
+site/planning.sqlite3
+site/__pycache__/
+.env
+site/.vendor/
+site/.env
+site/.tools/
+
+site/planning-test.sqlite3
+
+site/.env.*
+!site/.env.example
+tmp/
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+__pycache__/

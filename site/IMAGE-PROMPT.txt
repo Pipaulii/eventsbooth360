@@ -1,0 +1,4 @@
+Outil : image_gen intégré. Image : public/ambiance-soiree.webp.
+Illustration photoréaliste de trois adultes fictifs sur une plateforme VideoBooth 360, soirée élégante noir et doré, éclairages violets, sans textes, logos ni boutons. Visages autorisés par le propriétaire. Ne représente pas les vrais clients ni le matériel réel.
+
+Variante v2 — outil image_gen intégré. Fichier public/ambiance-soiree-v2.webp. Scène spontanée de trois adultes fictifs riant sur un VideoBooth 360, cadrage rapproché, éclairage violet et magenta, photographie événementielle naturelle, sans texte ni logo.

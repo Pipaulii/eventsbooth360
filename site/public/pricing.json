@@ -1,0 +1,18 @@
+{
+  "currency": "eur",
+  "deposit_percent": 30,
+  "packages": {
+    "2": {
+      "duration_hours": 2,
+      "price_cents": 22900
+    },
+    "3": {
+      "duration_hours": 3,
+      "price_cents": 29900
+    },
+    "4": {
+      "duration_hours": 4,
+      "price_cents": 35900
+    }
+  }
+}
