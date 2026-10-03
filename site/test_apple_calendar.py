@@ -72,7 +72,10 @@ class CalendarTests(unittest.TestCase):
                 db.execute('INSERT INTO bookings VALUES(?,?,?,?,?,?,?,?)',('b'*32,slot,22900,6870,'pending','cs_mock2','private address',2))
             saved={};calls=[]
             class Remote:
-                def get_event_by_uid(self,uid):
+                url='https://example.icloud.com/calendar/'
+                def event_by_url(self,url):
+                    from urllib.parse import unquote
+                    uid=unquote(url.rsplit('/',1)[1][:-4])
                     if uid not in saved:raise NotFoundError()
                     return saved[uid]
                 def add_event(self,data):

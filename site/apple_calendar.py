@@ -2,7 +2,7 @@
 from contextlib import contextmanager
 from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
-from urllib.parse import urlparse
+from urllib.parse import urlparse, quote
 import threading
 import time as clock
 import payments
@@ -151,7 +151,9 @@ def export_pending(connect):
             for booking_id, begin, finish in rows:
                 uid = 'eventsbooth360-' + booking_id + '@eventsbooth360.fr'
                 try:
-                    cal.get_event_by_uid(uid)
+                    # iCloud can reject UID-filtered REPORT queries. Use the
+                    # deterministic resource URL for idempotent GET instead.
+                    cal.event_by_url(str(cal.url).rstrip('/') + '/' + quote(uid, safe='') + '.ics')
                 except NotFoundError:
                     cal.add_event(event_data(booking_id, begin, finish))
                 db.execute('UPDATE calendar_exports SET exported=1 WHERE booking_id=?', (booking_id,))
