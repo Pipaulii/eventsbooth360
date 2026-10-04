@@ -8,3 +8,4 @@
 .payment-summary{margin:20px 0;border-top:1px solid #ddd;padding-top:18px}.payment-summary dl div{display:flex;justify-content:space-between;gap:12px;padding:6px 0;font-size:14px}.payment-summary dd{margin:0;font-weight:700}.payment-summary dl div:nth-child(2){font-size:16px;color:#6c4b17}
 
 #event-address{font:inherit;width:100%;padding:12px;color:#171a20;background:#fff;border:1px solid #cdd0d5;border-radius:8px;margin-bottom:8px}
+.calendar{align-self:start}#occupied{margin-top:20px;padding-top:18px;border-top:1px solid #dedfe1}#occupied p{margin-bottom:0}.customer-details label:not(:first-child){margin-top:16px}@media(min-width:1001px) and (min-height:760px){.calendar{position:sticky;top:24px}}
