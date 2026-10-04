@@ -17,6 +17,7 @@ def resource(start,end=None,**props):
 
 class CalendarTests(unittest.TestCase):
     def test_calendar_deletion_grace_outage_and_durable_cancellation(self):
+        apple._deletion_checks.clear()
         from contextlib import contextmanager
         with tempfile.TemporaryDirectory() as folder,patch.object(server,'DATABASE',Path(folder)/'test.db'),patch.object(payments,'config',return_value={'ICLOUD_SYNC_ENABLED':'true'}):
             with server.connect() as db:
@@ -31,9 +32,11 @@ class CalendarTests(unittest.TestCase):
             def connection():yield Remote()
             with patch.object(apple,'calendar_connection',connection),patch.object(apple.clock,'time',return_value=1000):
                 apple.reconcile_deletions(server.connect,date(2026,10,1),date(2026,11,1))
+            apple._deletion_checks.clear()
             with patch.object(apple,'calendar_connection',side_effect=apple.CalendarUnavailable('offline')),patch.object(apple.clock,'time',return_value=1121):
                 with self.assertRaises(apple.CalendarUnavailable):apple.reconcile_deletions(server.connect,date(2026,10,1),date(2026,11,1))
             with server.connect() as db:self.assertEqual(db.execute('SELECT count(*) FROM slots').fetchone()[0],1)
+            apple._deletion_checks.clear()
             with patch.object(apple,'calendar_connection',connection),patch.object(apple.clock,'time',return_value=1121):
                 apple.reconcile_deletions(server.connect,date(2026,10,1),date(2026,11,1))
             with server.connect() as db:

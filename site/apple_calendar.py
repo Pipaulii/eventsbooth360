@@ -10,6 +10,7 @@ import payments
 PARIS = ZoneInfo('Europe/Paris')
 _cache = {}
 _cache_lock = threading.Lock()
+_deletion_checks = {}
 
 class CalendarUnavailable(Exception):
     pass
@@ -120,6 +121,10 @@ def reconcile_deletions(connect, first_day, last_day):
     A CalDAV timeout, authentication error or failed search cancels nothing.
     """
     if not enabled():return
+    check_key=(first_day.isoformat(),last_day.isoformat())
+    with _cache_lock:
+        if clock.monotonic()-_deletion_checks.get(check_key,float('-inf'))<120:return
+        _deletion_checks[check_key]=clock.monotonic()
     from caldav.lib.error import NotFoundError
     lower=datetime.combine(first_day,time.min).isoformat()
     upper=datetime.combine(last_day,time.min).isoformat()
