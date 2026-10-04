@@ -8,6 +8,13 @@ function showSlots(){
  chosen.textContent=new Intl.DateTimeFormat('fr-FR',{dateStyle:'full'}).format(selected);
  slots.replaceChildren();
  const item=planning?.days[key(selected)];
+ const occupied=document.querySelector('#occupied');occupied.replaceChildren();
+ if(planning?.ready&&item){
+  const heading=document.createElement('h3');heading.textContent='Créneaux occupés';occupied.append(heading);
+  const periods=item.occupied||[];
+  if(!periods.length){const text=document.createElement('p');text.textContent='Aucun horaire occupé pour cette date.';occupied.append(text)}
+  periods.forEach(period=>{const text=document.createElement('p');text.textContent=`Indisponible de ${period.start.replace(':',' h ')} à ${period.end.replace(':',' h ')} (heure de Paris)`;occupied.append(text)});
+ }
  if(!planning){slots.textContent='Chargement des horaires…';return}
  const verified=planning.ready&&item;
  const times=verified?item.slots:Array.from({length:(13-Number(duration.value))*2+1},(_,i)=>`${String(10+Math.floor(i/2)).padStart(2,'0')}:${i%2?'30':'00'}`);

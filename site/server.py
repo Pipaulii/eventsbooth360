@@ -24,6 +24,19 @@ def connect():
 def setting(db,key,default):
     row=db.execute('SELECT value FROM settings WHERE key=?',(key,)).fetchone()
     return row[0] if row else default
+
+def occupied_periods(db,day,extra=()):
+    lower=datetime.combine(day,datetime.min.time());upper=lower+timedelta(days=1)
+    rows=db.execute('SELECT start,end FROM slots WHERE start < ? AND end > ?', (upper.isoformat(),lower.isoformat())).fetchall()
+    periods=[]
+    for a,b in list(rows)+list(extra):
+        begin=max(lower,datetime.fromisoformat(a));finish=min(upper,datetime.fromisoformat(b))
+        if begin<finish:periods.append((begin,finish))
+    merged=[]
+    for begin,finish in sorted(periods):
+        if merged and begin<=merged[-1][1]:merged[-1]=(merged[-1][0],max(finish,merged[-1][1]))
+        else:merged.append((begin,finish))
+    return [{'start':a.strftime('%H:%M'),'end':('24:00' if b==upper else b.strftime('%H:%M'))} for a,b in merged]
 def openings(db,day,duration,extra=()):
     start=datetime.combine(day,datetime.min.time()).replace(hour=10)
     close=start.replace(hour=23)
