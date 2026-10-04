@@ -151,10 +151,11 @@ def bookings():
             payments.schema(db);schema(db)
             rows=db.execute('SELECT b.id,b.status,b.total,b.due,b.event_address,COALESCE(s.start,a.start,c.start),COALESCE(s.end,a.end,c.end),a.refund_status,a.refunded,a.calendar_done FROM bookings b LEFT JOIN slots s ON s.id=b.slot_id LEFT JOIN admin_cancellations a ON a.booking_id=b.id LEFT JOIN calendar_cancellations c ON c.booking_id=b.id ORDER BY b.created DESC LIMIT 200').fetchall()
             contacts={r[0]:r[1:] for r in db.execute('SELECT booking_id,first_name,last_name,phone FROM booking_contacts').fetchall()}
+            themes={r[0]:r[1:] for r in db.execute('SELECT booking_id,event_type,video_name FROM booking_personalization').fetchall()}
         keys=['id','status','total','due','address','start','end','refund_status','refunded','calendar_done']
         items=[]
         for row in rows:
-            item=dict(zip(keys,row));item.update(dict(zip(['first_name','last_name','phone'],contacts.get(row[0],('','','')))));items.append(item)
+            item=dict(zip(keys,row));item.update(dict(zip(['first_name','last_name','phone'],contacts.get(row[0],('','','')))));item.update(dict(zip(['event_type','video_name'],themes.get(row[0],('','')))));items.append(item)
         return jsonify(bookings=items)
     except Exception:return jsonify(error='Réservations temporairement indisponibles.'),503
 @bp.post('/api/admin/cancel')
