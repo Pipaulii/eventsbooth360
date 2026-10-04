@@ -110,6 +110,51 @@ def busy(first_day, last_day, fresh=False):
 
 def schema(db):
     db.execute('CREATE TABLE IF NOT EXISTS calendar_exports(booking_id TEXT PRIMARY KEY, exported INTEGER NOT NULL DEFAULT 0)')
+    db.execute('CREATE TABLE IF NOT EXISTS calendar_missing(booking_id TEXT PRIMARY KEY, first_seen INTEGER NOT NULL)')
+    db.execute('CREATE TABLE IF NOT EXISTS calendar_cancellations(booking_id TEXT PRIMARY KEY, start TEXT NOT NULL, end TEXT NOT NULL, cancelled_at INTEGER NOT NULL)')
+
+def reconcile_deletions(connect, first_day, last_day):
+    """Only cancel exported events after two successful missing checks 120s apart.
+
+    Preserve booking and original times for review; never refund a payment.
+    A CalDAV timeout, authentication error or failed search cancels nothing.
+    """
+    if not enabled():return
+    from caldav.lib.error import NotFoundError
+    lower=datetime.combine(first_day,time.min).isoformat()
+    upper=datetime.combine(last_day,time.min).isoformat()
+    now=int(clock.time())
+    with connect() as db:
+        payments.schema(db);schema(db)
+        rows=db.execute("SELECT b.id,s.start,s.end FROM bookings b JOIN slots s ON s.id=b.slot_id JOIN calendar_exports c ON c.booking_id=b.id WHERE b.status='confirmed' AND c.exported=1 AND s.start < ? AND s.end > ?",(upper,lower)).fetchall()
+    if not rows:return
+    observations=[]
+    # Complete all reads before mutating the database: a partial outage cannot
+    # turn an incomplete calendar response into cancellations.
+    with calendar_connection() as cal:
+        for booking_id,begin,finish in rows:
+            uid='eventsbooth360-'+booking_id+'@eventsbooth360.fr'
+            try:
+                cal.event_by_url(str(cal.url).rstrip('/')+'/'+quote(uid,safe='')+'.ics')
+                missing=False
+            except NotFoundError:missing=True
+            observations.append((booking_id,begin,finish,missing))
+    with connect() as db:
+        db.execute('BEGIN IMMEDIATE')
+        for booking_id,begin,finish,missing in observations:
+            if not missing:
+                db.execute('DELETE FROM calendar_missing WHERE booking_id=?',(booking_id,));continue
+            row=db.execute('SELECT first_seen FROM calendar_missing WHERE booking_id=?',(booking_id,)).fetchone()
+            if not row:
+                db.execute('INSERT INTO calendar_missing VALUES(?,?) ON CONFLICT(booking_id) DO NOTHING',(booking_id,now));continue
+            if now-row[0]<120:continue
+            booking=db.execute("SELECT slot_id FROM bookings WHERE id=? AND status='confirmed'",(booking_id,)).fetchone()
+            if not booking:continue
+            db.execute('INSERT INTO calendar_cancellations VALUES(?,?,?,?) ON CONFLICT(booking_id) DO NOTHING',(booking_id,begin,finish,now))
+            db.execute("UPDATE bookings SET status='cancelled_calendar' WHERE id=?",(booking_id,))
+            db.execute('DELETE FROM slots WHERE id=?',(booking[0],))
+            db.execute('DELETE FROM calendar_missing WHERE booking_id=?',(booking_id,))
+    with _cache_lock:_cache.clear()
 
 def event_data(booking_id, begin, finish):
     from icalendar import Calendar, Event
@@ -127,7 +172,7 @@ def event_data(booking_id, begin, finish):
     event.add('dtend', end.astimezone(timezone.utc))
     event.add('summary', f'EventsBooth360 — location confirmée — {hours} h')
     event.add('description', 'Réservation ' + booking_id +
-              '\nLe site conserve la réservation. Modifier ou supprimer cet événement ne l’annule pas.')
+              '\nSupprimer cet événement libère le créneau sur le site après vérification. Aucun remboursement automatique. Modifier ses horaires ne déplace pas la réservation du site.')
     event.add('status', 'CONFIRMED')
     event.add('transp', 'OPAQUE')
     event.add('class', 'PRIVATE')

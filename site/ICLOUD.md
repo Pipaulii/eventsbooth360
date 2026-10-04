@@ -27,9 +27,14 @@ promesse de synchronisation en arrière-plan à fréquence fixe.
 
 L'événement exporté contient seulement l'horaire, la durée et une référence.
 Aucune adresse, identité ou information de paiement client n'est transmise.
-Modifier ou supprimer cet événement dans Apple ne modifie pas une location
-payée dans la base. Les annulations et déplacements de réservations payées
-nécessitent une procédure séparée ; ils ne sont pas automatisés ici.
+Supprimer un événement exporté dans Apple libère désormais le créneau du site
+après deux lectures réussies constatant son absence, espacées d'au moins 120
+secondes. Une panne ou une erreur d'authentification ne déclenche aucune
+annulation. La réservation et ses horaires d'origine sont conservés dans
+`bookings` et `calendar_cancellations`. Aucun remboursement Stripe automatique.
+Modifier les horaires dans Apple ne déplace pas la réservation du site.
+La vérification intervient lors des consultations du mois concerné ; actualiser
+le calendrier après deux minutes pour terminer une suppression.
 
 Pour désactiver l'intégration : `ICLOUD_SYNC_ENABLED=false` puis redéployer.
 Le site conserve alors uniquement ses réservations internes ; les périodes

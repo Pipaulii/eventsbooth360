@@ -77,6 +77,9 @@ def webhook(payload,signature,connect):
         booking=db.execute('SELECT slot_id,due,status,session_id FROM bookings WHERE id=?',(bid,)).fetchone()
         if booking and kind.startswith('checkout.session.'):
             slot,due,status,sid=booking
+            if status=='cancelled_calendar':
+                db.execute('INSERT INTO stripe_events VALUES(?,?)',(event['id'],int(time.time())))
+                return
             if sid and sid!=obj['id']:raise PaymentError('Session incohérente.')
             if kind in ('checkout.session.completed','checkout.session.async_payment_succeeded'):
                 if obj.get('payment_status')=='paid':

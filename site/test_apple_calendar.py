@@ -16,6 +16,32 @@ def resource(start,end=None,**props):
     return SimpleNamespace(icalendar_instance=cal)
 
 class CalendarTests(unittest.TestCase):
+    def test_calendar_deletion_grace_outage_and_durable_cancellation(self):
+        from contextlib import contextmanager
+        with tempfile.TemporaryDirectory() as folder,patch.object(server,'DATABASE',Path(folder)/'test.db'),patch.object(payments,'config',return_value={'ICLOUD_SYNC_ENABLED':'true'}):
+            with server.connect() as db:
+                payments.schema(db);apple.schema(db)
+                slot=db.execute('INSERT INTO slots(start,end) VALUES(?,?)',('2026-10-06T14:00:00','2026-10-06T16:00:00')).lastrowid
+                db.execute('INSERT INTO bookings VALUES(?,?,?,?,?,?,?,?)',('test-delete',slot,22900,6870,'confirmed','cs_test','private address',1))
+                db.execute('INSERT INTO calendar_exports VALUES(?,1)',('test-delete',))
+            class Remote:
+                url='https://example.icloud.com/calendar/'
+                def event_by_url(self,url):raise NotFoundError()
+            @contextmanager
+            def connection():yield Remote()
+            with patch.object(apple,'calendar_connection',connection),patch.object(apple.clock,'time',return_value=1000):
+                apple.reconcile_deletions(server.connect,date(2026,10,1),date(2026,11,1))
+            with patch.object(apple,'calendar_connection',side_effect=apple.CalendarUnavailable('offline')),patch.object(apple.clock,'time',return_value=1121):
+                with self.assertRaises(apple.CalendarUnavailable):apple.reconcile_deletions(server.connect,date(2026,10,1),date(2026,11,1))
+            with server.connect() as db:self.assertEqual(db.execute('SELECT count(*) FROM slots').fetchone()[0],1)
+            with patch.object(apple,'calendar_connection',connection),patch.object(apple.clock,'time',return_value=1121):
+                apple.reconcile_deletions(server.connect,date(2026,10,1),date(2026,11,1))
+            with server.connect() as db:
+                self.assertEqual(db.execute('SELECT count(*) FROM slots').fetchone()[0],0)
+                self.assertEqual(db.execute('SELECT status,due FROM bookings').fetchone(),('cancelled_calendar',6870))
+                self.assertEqual(db.execute('SELECT start,end FROM calendar_cancellations').fetchone(),('2026-10-06T14:00:00','2026-10-06T16:00:00'))
+            with patch.object(apple,'calendar_connection',side_effect=AssertionError('must not recreate cancelled booking')):
+                apple.export_pending(server.connect)
     def test_all_day_and_transparent_cancelled(self):
         lower=datetime(2026,10,1);upper=datetime(2026,11,1)
         events=[resource(date(2026,10,4),date(2026,10,5)),

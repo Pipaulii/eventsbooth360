@@ -39,6 +39,7 @@ def availability():
     if payments.config().get('DATABASE_URL'):
         try:
             external=apple_calendar.busy(date(year,month,1),date(year,month,count)+timedelta(days=1))
+            apple_calendar.reconcile_deletions(server.connect,date(year,month,1),date(year,month,count)+timedelta(days=1))
             try:apple_calendar.export_pending(server.connect)
             except apple_calendar.CalendarUnavailable as e:app.logger.warning('Export iCloud en attente de reprise: %s',str(e))
             with server.connect() as db:
