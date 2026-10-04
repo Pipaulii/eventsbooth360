@@ -32,14 +32,18 @@ def ready():
 def schema(db):
     db.execute('CREATE TABLE IF NOT EXISTS bookings(id TEXT PRIMARY KEY,slot_id INTEGER NOT NULL,total INTEGER NOT NULL,due INTEGER NOT NULL,status TEXT NOT NULL,session_id TEXT UNIQUE,event_address TEXT NOT NULL,created INTEGER NOT NULL)')
     db.execute('CREATE TABLE IF NOT EXISTS stripe_events(id TEXT PRIMARY KEY,created INTEGER NOT NULL)')
+    db.execute('CREATE TABLE IF NOT EXISTS booking_contacts(booking_id TEXT PRIMARY KEY,first_name TEXT NOT NULL,last_name TEXT NOT NULL,phone TEXT NOT NULL)')
     db.commit()
 def checkout(data,connect,openings,setting):
     if not ready():raise PaymentError('Paiement non configuré pour cet environnement.')
     try:
         duration=int(data['duration']);mode=data['payment_mode'];start=datetime.fromisoformat(data['date']+'T'+data['time']);address=str(data['address']).strip()
+        first=data['first_name'].strip();last=data['last_name'].strip();phone=data['phone'].strip()
+        if not all(1<=len(n)<=80 and not any(ord(c)<32 for c in n) for n in (first,last)):raise ValueError()
+        if len(phone)>30 or not re.fullmatch(r'\+?[\d\s().-]+',phone) or not 9<=len(re.sub(r'\D','',phone))<=15:raise ValueError()
         if duration not in (2,3,4) or mode not in ('deposit','full') or start.tzinfo or start.date()<=datetime.now().date() or len(address)<10 or len(address)>500:raise ValueError()
         if start.minute not in (0,30) or start.second:raise ValueError()
-    except (KeyError,ValueError,TypeError):raise PaymentError('Vérifiez la date, le créneau et l’adresse de votre événement. Réservez au plus tôt demain.')
+    except (KeyError,ValueError,TypeError,AttributeError):raise PaymentError('Vérifiez vos nom, prénom, téléphone, adresse et créneau. Réservez au plus tôt demain.')
     pricing=json.loads((ROOT/'public/pricing.json').read_text());total=pricing['packages'][str(duration)]['price_cents'];due=total if mode=='full' else (total*pricing['deposit_percent']+50)//100
     booking_id=secrets.token_hex(16);end=start+timedelta(hours=duration)
     import apple_calendar
@@ -54,6 +58,7 @@ def checkout(data,connect,openings,setting):
         if start.strftime('%H:%M') not in openings(db,start.date(),duration):raise PaymentError('Ce créneau vient d’être réservé. Choisissez un autre horaire.')
         slot=db.execute('INSERT INTO slots(start,end) VALUES(?,?)',(start.isoformat(),end.isoformat())).lastrowid
         db.execute('INSERT INTO bookings VALUES(?,?,?,?,?,?,?,?)',(booking_id,slot,total,due,'pending',None,address,int(time.time())))
+        db.execute('INSERT INTO booking_contacts VALUES(?,?,?,?)',(booking_id,first,last,phone))
     origin=config().get('SITE_URL','http://127.0.0.1:3600').rstrip('/')
     label='Acompte 30 %' if mode=='deposit' else 'Paiement total'
     params={'mode':'payment','locale':'fr','customer_creation':'always','billing_address_collection':'required','phone_number_collection':{'enabled':True},'invoice_creation':{'enabled':True},'integration_identifier':'eventsbooth360_'+''.join(secrets.choice('abcdefghijklmnopqrstuvwxyz') for _ in range(8)),'client_reference_id':booking_id,'metadata':{'booking_id':booking_id},'line_items':[{'quantity':1,'price_data':{'currency':'eur','unit_amount':due,'product_data':{'name':f'EventsBooth360 — {duration} h — {label}','description':f'{start:%d/%m/%Y %H:%M} · Total formule {total/100:.2f} EUR · Solde {(total-due)/100:.2f} EUR'}}}],'expires_at':int(time.time())+1800,'success_url':origin+'/?payment=processing#disponibilites','cancel_url':origin+'/?payment=cancelled#disponibilites'}
