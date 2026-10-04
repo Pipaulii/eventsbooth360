@@ -40,13 +40,13 @@ def occupied_periods(db,day,extra=()):
 def openings(db,day,duration,extra=()):
     start=datetime.combine(day,datetime.min.time()).replace(hour=10)
     close=start.replace(hour=23)
-    margin=timedelta(minutes=30)
-    occupied=db.execute('SELECT start,end FROM slots WHERE start < ? AND end > ?',((close+margin).isoformat(),(start-margin).isoformat())).fetchall()
-    occupied=list(occupied)+list(extra)
+    before=timedelta(minutes=90);after=timedelta(minutes=30)
+    occupied=db.execute('SELECT start,end FROM slots WHERE start < ? AND end > ?',((close+after+before).isoformat(),(start-before-after).isoformat())).fetchall()
+    occupied=[((datetime.fromisoformat(a)-before).isoformat(),(datetime.fromisoformat(b)+after).isoformat()) for a,b in occupied]+list(extra)
     result=[]
     while start+timedelta(hours=duration)<=close:
         end=start+timedelta(hours=duration)
-        if not any(start-margin<datetime.fromisoformat(b) and end+margin>datetime.fromisoformat(a) for a,b in occupied):
+        if not any(start-before<datetime.fromisoformat(b) and end+after>datetime.fromisoformat(a) for a,b in occupied):
             result.append(start.strftime('%H:%M'))
         start+=timedelta(minutes=30)
     return result

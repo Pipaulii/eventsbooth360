@@ -90,8 +90,8 @@ def busy(first_day, last_day, fresh=False):
     """last_day is exclusive. Public views cache 60s; Checkout always reads fresh."""
     if not enabled():
         return []
-    lower = datetime.combine(first_day, time.min) - timedelta(minutes=30)
-    upper = datetime.combine(last_day, time.min) + timedelta(minutes=30)
+    lower = datetime.combine(first_day, time.min) - timedelta(minutes=120)
+    upper = datetime.combine(last_day, time.min) + timedelta(minutes=120)
     c = payments.config()
     key = (c.get('ICLOUD_USERNAME'), c.get('ICLOUD_CALENDAR_NAME', 'EventsBooth360'),
            first_day.isoformat(), last_day.isoformat())
