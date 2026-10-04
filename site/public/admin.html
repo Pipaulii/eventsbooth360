@@ -1,0 +1,8 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Administration — EventsBooth360</title><link rel="stylesheet" href="/admin.css"><script src="/admin.js" defer></script></head>
+<body><main><header><div><p class="brand">EventsBooth360</p><h1>Administration</h1></div><button id="logout" hidden>Se déconnecter</button></header>
+<p id="message" role="status" aria-live="polite"></p>
+<section id="login-panel"><h2>Connexion</h2><form id="login"><label for="email">Adresse e-mail</label><input id="email" type="email" autocomplete="username" required><label for="password">Mot de passe</label><input id="password" type="password" autocomplete="current-password" required><button type="submit">Se connecter</button></form><p class="muted">Accès privé. La connexion expire après 30 minutes.</p></section>
+<section id="dashboard" hidden><div class="heading"><h2>Réservations</h2><button id="refresh">Actualiser</button></div><p class="muted">Le remboursement porte sur le montant payé en ligne : l’acompte ou le paiement total. Les paiements encaissés séparément restent à gérer dans Stripe.</p><div id="bookings"></div></section>
+<dialog id="confirmation"><h2>Annuler cette location ?</h2><p id="summary"></p><p>Cette action demande le remboursement du paiement Stripe et libère le créneau. La suppression dans Apple peut nécessiter une nouvelle actualisation.</p><p><strong>Le remboursement ne peut pas être annulé.</strong></p><div class="actions"><button id="back">Garder la réservation</button><button id="confirm" class="danger">Annuler et rembourser</button></div></dialog>
+</main></body></html>

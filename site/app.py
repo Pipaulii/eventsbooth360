@@ -4,15 +4,18 @@ from datetime import date,timedelta
 from pathlib import Path
 from flask import Flask,request,jsonify,send_from_directory
 import payments,server,apple_calendar
+import admin
 ROOT=Path(__file__).resolve().parent
 app=Flask(__name__,static_folder=str(ROOT/'public'),static_url_path='/assets')
 app.config['MAX_CONTENT_LENGTH']=65536
+app.register_blueprint(admin.bp)
 @app.after_request
 def security(response):
     response.headers['Content-Security-Policy']="default-src 'self'; img-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
     response.headers['X-Content-Type-Options']='nosniff'
     response.headers['Referrer-Policy']='strict-origin-when-cross-origin'
-    if request.path.startswith('/api/'):response.headers['Cache-Control']='no-store'
+    if request.path.startswith(('/api/','/admin')):response.headers['Cache-Control']='no-store'
+    if request.path.startswith(('/admin','/api/admin')):response.headers['X-Robots-Tag']='noindex, nofollow'
     return response
 @app.get('/health')
 def health():return jsonify(status='ok')

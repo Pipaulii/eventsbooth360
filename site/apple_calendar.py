@@ -209,3 +209,12 @@ def export_pending(connect):
                 db.execute('UPDATE calendar_exports SET exported=1 WHERE booking_id=?', (booking_id,))
     with _cache_lock:
         _cache.clear()
+
+def remove_booking(booking_id):
+    if not enabled():return
+    from caldav.lib.error import NotFoundError
+    uid='eventsbooth360-'+booking_id+'@eventsbooth360.fr'
+    with calendar_connection() as cal:
+        try:cal.event_by_url(str(cal.url).rstrip('/')+'/'+quote(uid,safe='')+'.ics').delete()
+        except NotFoundError:pass
+    with _cache_lock:_cache.clear()
