@@ -39,12 +39,13 @@ def occupied_periods(db,day,extra=()):
     return [{'start':a.strftime('%H:%M'),'end':('24:00' if b==upper else b.strftime('%H:%M'))} for a,b in merged]
 def openings(db,day,duration,extra=()):
     start=datetime.combine(day,datetime.min.time()).replace(hour=10)
-    close=start.replace(hour=23)
+    last_start=start.replace(hour=23)
+    close=last_start+timedelta(hours=duration)
     before=timedelta(minutes=0);after=timedelta(minutes=60)
     occupied=db.execute('SELECT start,end FROM slots WHERE start < ? AND end > ?',((close+after+before).isoformat(),(start-before-after).isoformat())).fetchall()
     occupied=[((datetime.fromisoformat(a)-before).isoformat(),(datetime.fromisoformat(b)+after).isoformat()) for a,b in occupied]+list(extra)
     result=[]
-    while start+timedelta(hours=duration)<=close:
+    while start<=last_start:
         end=start+timedelta(hours=duration)
         if not any(start-before<datetime.fromisoformat(b) and end+after>datetime.fromisoformat(a) for a,b in occupied):
             result.append(start.strftime('%H:%M'))
@@ -87,7 +88,7 @@ class Handler(SimpleHTTPRequestHandler):
                 ready=setting(db,'ready','false')=='true';items={}
                 for n in range(1,calendar.monthrange(year,month)[1]+1):
                     day=date(year,month,n);available=openings(db,day,duration) if ready else []
-                    max_slots= len(range(0,(13-duration)*2+1))
+                    max_slots= 27
                     items[day.isoformat()]={'state':('free' if len(available)==max_slots else 'partial' if available else 'full') if ready else 'unknown','slots':available}
             body=json.dumps({'ready':ready,'timezone':'Europe/Paris','days':items,'test_mode':DATABASE.name=='planning-test.sqlite3'}).encode()
             self.send_response(200);self.send_header('Content-Type','application/json');self.send_header('Cache-Control','no-store');self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body)

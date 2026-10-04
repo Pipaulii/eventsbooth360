@@ -91,7 +91,7 @@ def busy(first_day, last_day, fresh=False):
     if not enabled():
         return []
     lower = datetime.combine(first_day, time.min) - timedelta(minutes=120)
-    upper = datetime.combine(last_day, time.min) + timedelta(minutes=120)
+    upper = datetime.combine(last_day, time.min) + timedelta(hours=5)
     c = payments.config()
     key = (c.get('ICLOUD_USERNAME'), c.get('ICLOUD_CALENDAR_NAME', 'EventsBooth360'),
            first_day.isoformat(), last_day.isoformat())

@@ -50,7 +50,7 @@ def availability():
                 ready=server.setting(db,'ready','false')=='true'
                 for n in range(1,count+1):
                     day=date(year,month,n);slots=server.openings(db,day,duration,extra=external) if ready else []
-                    items[day.isoformat()]={'state':('free' if len(slots)==(13-duration)*2+1 else 'partial' if slots else 'full') if ready else 'unknown','slots':slots,'occupied':server.occupied_periods(db,day,extra=external) if ready else []}
+                    items[day.isoformat()]={'state':('free' if len(slots)==27 else 'partial' if slots else 'full') if ready else 'unknown','slots':slots,'occupied':server.occupied_periods(db,day,extra=external) if ready else []}
         except apple_calendar.CalendarUnavailable as e:
             app.logger.warning('Agenda Apple: %s',str(e))
             return jsonify(error='Agenda Apple temporairement indisponible. Réessayez dans quelques instants.'),503
