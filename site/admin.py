@@ -41,7 +41,7 @@ def protected(fn):
     return wrapped
 def schema(db):
     apple_calendar.schema(db)
-    db.execute('CREATE TABLE IF NOT EXISTS admin_attempts(identity TEXT PRIMARY KEY, window INTEGER NOT NULL, attempts INTEGER NOT NULL)')
+    db.execute('CREATE TABLE IF NOT EXISTS admin_attempts(identity TEXT PRIMARY KEY, attempt_window INTEGER NOT NULL, attempts INTEGER NOT NULL)')
     db.execute('CREATE TABLE IF NOT EXISTS admin_users(id INTEGER PRIMARY KEY,email TEXT UNIQUE NOT NULL,password_hash TEXT NOT NULL)')
     db.execute('CREATE TABLE IF NOT EXISTS admin_cancellations(booking_id TEXT PRIMARY KEY, start TEXT NOT NULL, end TEXT NOT NULL, refund_id TEXT, refund_status TEXT NOT NULL, refunded INTEGER NOT NULL DEFAULT 0, calendar_done INTEGER NOT NULL DEFAULT 0, created INTEGER NOT NULL)')
 
@@ -63,13 +63,13 @@ def login():
     user=account();ident=hashlib.sha256((user[1]+ip).encode()).hexdigest();window=int(time.time())//600
     with server.connect() as db:
         schema(db);db.execute('BEGIN IMMEDIATE')
-        row=db.execute('SELECT window,attempts FROM admin_attempts WHERE identity=?',(ident,)).fetchone()
+        row=db.execute('SELECT attempt_window,attempts FROM admin_attempts WHERE identity=?',(ident,)).fetchone()
         if row and row[0]==window and row[1]>=5:return jsonify(error='Trop de tentatives. Réessayez dans 10 minutes.'),429
-        global_row=db.execute("SELECT window,attempts FROM admin_attempts WHERE identity='global'").fetchone()
+        global_row=db.execute("SELECT attempt_window,attempts FROM admin_attempts WHERE identity='global'").fetchone()
         if global_row and global_row[0]==window and global_row[1]>=30:return jsonify(error='Trop de tentatives. Réessayez dans 10 minutes.'),429
-        db.execute('INSERT INTO admin_attempts VALUES(?,?,?) ON CONFLICT(identity) DO UPDATE SET window=EXCLUDED.window,attempts=EXCLUDED.attempts',('global',window,(global_row[1]+1 if global_row and global_row[0]==window else 1)))
-        db.execute('DELETE FROM admin_attempts WHERE window < ?',(window-1,))
-        db.execute('INSERT INTO admin_attempts VALUES(?,?,?) ON CONFLICT(identity) DO UPDATE SET window=EXCLUDED.window,attempts=EXCLUDED.attempts',(ident,window,(row[1]+1 if row and row[0]==window else 1)))
+        db.execute('INSERT INTO admin_attempts VALUES(?,?,?) ON CONFLICT(identity) DO UPDATE SET attempt_window=EXCLUDED.attempt_window,attempts=EXCLUDED.attempts',('global',window,(global_row[1]+1 if global_row and global_row[0]==window else 1)))
+        db.execute('DELETE FROM admin_attempts WHERE attempt_window < ?',(window-1,))
+        db.execute('INSERT INTO admin_attempts VALUES(?,?,?) ON CONFLICT(identity) DO UPDATE SET attempt_window=EXCLUDED.attempt_window,attempts=EXCLUDED.attempts',(ident,window,(row[1]+1 if row and row[0]==window else 1)))
         if str(data.get('email','')).strip().casefold()!=user[0] or not check_password_hash(user[1],candidate):
             return jsonify(error='Mot de passe incorrect.'),401
         db.execute('DELETE FROM admin_attempts WHERE identity=?',(ident,))
