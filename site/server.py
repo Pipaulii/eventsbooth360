@@ -40,7 +40,7 @@ def occupied_periods(db,day,extra=()):
 def openings(db,day,duration,extra=()):
     start=datetime.combine(day,datetime.min.time()).replace(hour=10)
     close=start.replace(hour=23)
-    before=timedelta(minutes=90);after=timedelta(minutes=30)
+    before=timedelta(minutes=0);after=timedelta(minutes=60)
     occupied=db.execute('SELECT start,end FROM slots WHERE start < ? AND end > ?',((close+after+before).isoformat(),(start-before-after).isoformat())).fetchall()
     occupied=[((datetime.fromisoformat(a)-before).isoformat(),(datetime.fromisoformat(b)+after).isoformat()) for a,b in occupied]+list(extra)
     result=[]
