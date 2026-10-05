@@ -5,10 +5,12 @@ from pathlib import Path
 from flask import Flask,request,jsonify,send_from_directory
 import payments,server,apple_calendar
 import admin
+import seo
 ROOT=Path(__file__).resolve().parent
 app=Flask(__name__,static_folder=str(ROOT/'public'),static_url_path='/assets')
 app.config['MAX_CONTENT_LENGTH']=65536
 app.register_blueprint(admin.bp)
+app.register_blueprint(seo.bp)
 @app.after_request
 def security(response):
     response.headers['Content-Security-Policy']="default-src 'self'; img-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
