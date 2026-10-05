@@ -1,6 +1,6 @@
 User-agent: *
-Allow: /
 Disallow: /api/
 Disallow: /admin
+Allow: /
 
 Sitemap: https://eventsbooth360.fr/sitemap.xml
