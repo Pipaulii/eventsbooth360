@@ -17,7 +17,12 @@ def security(response):
     response.headers['X-Content-Type-Options']='nosniff'
     response.headers['Referrer-Policy']='strict-origin-when-cross-origin'
     if request.path.startswith(('/api/','/admin')):response.headers['Cache-Control']='no-store'
-    if request.path.startswith(('/admin','/api/admin')):response.headers['X-Robots-Tag']='noindex, nofollow'
+    if request.path.startswith(('/admin','/api/')) or request.path=='/health':response.headers['X-Robots-Tag']='noindex, nofollow'
+    return response
+@app.get('/robots.txt')
+def robots():
+    response=send_from_directory(ROOT/'public','robots.txt')
+    response.headers['Cache-Control']='no-store, max-age=0'
     return response
 @app.get('/health')
 def health():return jsonify(status='ok')
@@ -39,13 +44,13 @@ def availability():
         year,month=map(int,request.args['month'].split('-'));duration=int(request.args.get('duration','2'))
         if duration not in (2,3,4) or not 2026<=year<=2100:raise ValueError()
         count=calendar.monthrange(year,month)[1]
-    except (ValueError,KeyError):return jsonify(error='Paramètres invalides.'),400
+    except (ValueError,KeyError):return jsonify(error='ParamÃ¨tres invalides.'),400
     items={};ready=False
     if payments.config().get('DATABASE_URL'):
         try:
             external=apple_calendar.busy(date(year,month,1),date(year,month,count)+timedelta(days=1))
             try:apple_calendar.reconcile_deletions(server.connect,date(year,month,1),date(year,month,count)+timedelta(days=1))
-            except apple_calendar.CalendarUnavailable:app.logger.warning('Vérification des suppressions iCloud reportée; aucun créneau libéré.')
+            except apple_calendar.CalendarUnavailable:app.logger.warning('VÃ©rification des suppressions iCloud reportÃ©e; aucun crÃ©neau libÃ©rÃ©.')
             try:apple_calendar.export_pending(server.connect)
             except apple_calendar.CalendarUnavailable as e:app.logger.warning('Export iCloud en attente de reprise: %s',str(e))
             with server.connect() as db:
@@ -55,22 +60,22 @@ def availability():
                     items[day.isoformat()]={'state':('free' if len(slots)==27 else 'partial' if slots else 'full') if ready else 'unknown','slots':slots,'occupied':server.occupied_periods(db,day,extra=external) if ready else []}
         except apple_calendar.CalendarUnavailable as e:
             app.logger.warning('Agenda Apple: %s',str(e))
-            return jsonify(error='Agenda Apple temporairement indisponible. Réessayez dans quelques instants.'),503
+            return jsonify(error='Agenda Apple temporairement indisponible. RÃ©essayez dans quelques instants.'),503
         except Exception:return jsonify(error='Planning temporairement indisponible.'),503
     else:
         items={date(year,month,n).isoformat():{'state':'unknown','slots':[]} for n in range(1,count+1)}
     return jsonify(ready=ready,timezone='Europe/Paris',days=items,test_mode=False)
 @app.post('/api/checkout')
 def checkout():
-    if not payments.config().get('DATABASE_URL'):return jsonify(error='Planning persistant non connecté.'),503
+    if not payments.config().get('DATABASE_URL'):return jsonify(error='Planning persistant non connectÃ©.'),503
     origin=payments.config().get('SITE_URL','').rstrip('/')
-    if not origin or request.headers.get('Origin')!=origin:return jsonify(error='Origine refusée.'),403
+    if not origin or request.headers.get('Origin')!=origin:return jsonify(error='Origine refusÃ©e.'),403
     try:return jsonify(payments.checkout(request.get_json(),server.connect,server.openings,server.setting))
     except payments.PaymentError as e:return jsonify(error=str(e)),400
     except Exception:return jsonify(error='Service temporairement indisponible.'),503
 @app.post('/api/stripe/webhook')
 def webhook():
-    if not payments.config().get('DATABASE_URL'):return jsonify(error='Planning persistant non connecté.'),503
+    if not payments.config().get('DATABASE_URL'):return jsonify(error='Planning persistant non connectÃ©.'),503
     try:
         payments.webhook(request.get_data(),request.headers.get('Stripe-Signature',''),server.connect)
         # DB confirmation is durable before exporting. A 503 makes Stripe retry;
@@ -80,4 +85,4 @@ def webhook():
     except payments.PaymentError as e:return jsonify(error=str(e)),400
     except Exception:return jsonify(error='Traitement temporairement indisponible.'),503
 @app.errorhandler(404)
-def missing(e):return 'Page introuvable. <a href="/">Revenir à EventsBooth360</a>',404
+def missing(e):return 'Page introuvable. <a href="/">Revenir Ã  EventsBooth360</a>',404
