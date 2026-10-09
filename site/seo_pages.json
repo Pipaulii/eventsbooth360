@@ -42,7 +42,24 @@
     "heading": "À quel moment prévoir l’animation ?",
     "text": "Choisissez un créneau cohérent avec le programme de votre réception : un temps dédié aux invités ou une partie de la soirée. La formule de deux heures convient à un passage plus concentré ; trois ou quatre heures offrent davantage de temps. Pour une organisation différente, demandez un devis.",
     "extra": "Préciser les noms pour vos vidéos",
-    "detail": "Dans la fiche de réservation, sélectionnez « Mariage » et indiquez les noms ou prénoms souhaités pour les filtres vidéo. Vérifiez leur orthographe. Renseignez aussi un numéro de téléphone et l’adresse complète du lieu pour préparer le déplacement et l’installation."
+    "detail": "Dans la fiche de réservation, sélectionnez « Mariage » et indiquez les noms ou prénoms souhaités pour les filtres vidéo. Vérifiez leur orthographe. Renseignez aussi un numéro de téléphone et l’adresse complète du lieu pour préparer le déplacement et l’installation.",
+    "sections": [
+      {
+        "heading": "Coordonner l’installation avec le lieu de réception",
+        "text": "Avant de réserver, précisez les accès au matériel et les horaires auxquels l’installation est possible. Si la salle ou un organisateur coordonne votre réception, mettez-nous en contact pour préparer l’emplacement et la prise électrique. La marge entre deux prestations ne réduit pas les heures d’animation réservées.",
+        "links": []
+      },
+      {
+        "heading": "Préparer la personnalisation du mariage",
+        "text": "Le champ facultatif des filtres vidéo permet d’indiquer les noms ou prénoms souhaités. Relisez leur orthographe avant de continuer. Pour un thème ou une organisation particulière, contactez-nous afin de préciser votre demande avant la prestation.",
+        "links": [
+          {
+            "href": "/materiel-animation-soiree-marseille",
+            "label": "Voir le matériel et les besoins d’installation"
+          }
+        ]
+      }
+    ]
   },
   "videobooth-360-anniversaire-marseille": {
     "title": "VideoBooth 360 pour un anniversaire à Marseille",
@@ -51,7 +68,24 @@
     "heading": "Personnaliser l’animation pour la personne célébrée",
     "text": "Sélectionnez « Anniversaire » dans le formulaire et indiquez le nom ou prénom à utiliser pour les filtres vidéo, par exemple « Les 30 ans de Julie ». Cette information est conservée avec votre réservation dans notre espace privé pour préparer la prestation.",
     "extra": "Choisir une durée et préparer le lieu",
-    "detail": "Réservez au minimum deux heures, ou choisissez trois ou quatre heures selon le rythme de la soirée. Nous apportons le matériel et les rallonges ; une prise électrique doit être disponible à proximité. Pour une fête en extérieur, contactez-nous pour vérifier les conditions avant de payer."
+    "detail": "Réservez au minimum deux heures, ou choisissez trois ou quatre heures selon le rythme de la soirée. Nous apportons le matériel et les rallonges ; une prise électrique doit être disponible à proximité. Pour une fête en extérieur, contactez-nous pour vérifier les conditions avant de payer.",
+    "sections": [
+      {
+        "heading": "Placer le VideoBooth dans le programme de la fête",
+        "text": "Choisissez un horaire qui laisse aux invités le temps de participer, en tenant compte du repas, du gâteau et des autres animations. La durée affichée correspond au temps d’animation choisi ; une heure est conservée entre deux prestations pour leur organisation.",
+        "links": []
+      },
+      {
+        "heading": "Les informations à préparer pour votre anniversaire",
+        "text": "Indiquez votre nom, prénom, téléphone et l’adresse complète de la fête. Le type « Anniversaire » et le nom facultatif pour les filtres vidéo permettent de préparer la personnalisation. Pour une fête à domicile ou dans une salle, faites vérifier l’emplacement : le plateau de 1 mètre nécessite un espace supplémentaire pour le bras et les invités.",
+        "links": [
+          {
+            "href": "/materiel-animation-soiree-marseille",
+            "label": "Préparer l’espace pour l’animation"
+          }
+        ]
+      }
+    ]
   },
   "videobooth-360-evenement-entreprise-marseille": {
     "title": "VideoBooth 360 pour un événement d’entreprise à Marseille",
@@ -60,7 +94,24 @@
     "heading": "Intégrer l’animation au programme professionnel",
     "text": "Précisez le lieu, les horaires et les temps durant lesquels les participants pourront profiter du VideoBooth. Les formules de deux à quatre heures sont réservables en ligne. Pour plusieurs séquences, une durée différente ou une organisation particulière, contactez-nous pour une demande personnalisée.",
     "extra": "Organisateurs et partenaires",
-    "detail": "Vous souhaitez proposer cette animation à vos clients ? Appelez-nous au 06 11 57 46 64 pour discuter d’une collaboration. Pour une réservation directe, sélectionnez « Événement professionnel » et renseignez les coordonnées du contact ainsi que l’adresse complète de l’événement."
+    "detail": "Vous souhaitez proposer cette animation à vos clients ? Appelez-nous au 06 11 57 46 64 pour discuter d’une collaboration. Pour une réservation directe, sélectionnez « Événement professionnel » et renseignez les coordonnées du contact ainsi que l’adresse complète de l’événement.",
+    "sections": [
+      {
+        "heading": "Désigner le contact et prévoir les accès",
+        "text": "Renseignez les coordonnées de la personne qui prépare l’événement et l’adresse complète du site. Précisez les conditions d’accès, le créneau d’installation et l’emplacement de la prise électrique. L’animateur accompagne l’utilisation du VideoBooth pendant toute la durée réservée.",
+        "links": []
+      },
+      {
+        "heading": "Réservation directe ou organisation sur devis",
+        "text": "Une animation continue de 2, 3 ou 4 heures peut être réservée en ligne selon les disponibilités. Pour plusieurs séquences, une durée différente ou une collaboration avec un organisateur, appelez-nous pour établir une demande personnalisée. Précisez aussi le nom souhaité pour les filtres vidéo afin de discuter de la personnalisation.",
+        "links": [
+          {
+            "href": "/location-videobooth-360-marseille",
+            "label": "Consulter la prestation à Marseille"
+          }
+        ]
+      }
+    ]
   },
   "location-videobooth-360-marseille": {
     "title": "Location de vidéobooth 360 à Marseille",
@@ -69,7 +120,32 @@
     "heading": "Un vidéobooth avec un animateur",
     "text": "Notre prestation comprend le matériel, son installation, sa désinstallation et un animateur présent pendant la durée réservée. Il accompagne les invités pour profiter de cette animation lors d’un mariage, d’un anniversaire, d’un baptême ou d’une soirée professionnelle.",
     "extra": "Comment réserver votre location de vidéobooth ?",
-    "detail": "Consultez le calendrier pour choisir votre date, une durée de deux, trois ou quatre heures et un horaire disponible. Indiquez le type d’événement, les coordonnées du contact et l’adresse du lieu. Pour une durée différente, contactez-nous pour un devis personnalisé."
+    "detail": "Consultez le calendrier pour choisir votre date, une durée de deux, trois ou quatre heures et un horaire disponible. Indiquez le type d’événement, les coordonnées du contact et l’adresse du lieu. Pour une durée différente, contactez-nous pour un devis personnalisé.",
+    "sections": [
+      {
+        "heading": "Préparer l’installation à Marseille",
+        "text": "Nous nous déplaçons sur le lieu de votre événement. Indiquez l’adresse complète, les accès au matériel et les horaires d’installation possibles. La plateforme mesure 1 mètre de diamètre ; l’emplacement doit aussi permettre le mouvement du bras et la circulation des invités. Nous apportons les rallonges, avec une prise électrique à prévoir à proximité. Une installation extérieure doit être vérifiée avec nous avant réservation.",
+        "links": []
+      },
+      {
+        "heading": "Quelle animation pour votre événement ?",
+        "text": "Le choix dépend du programme de votre réception : un moment dédié pour un mariage, une animation autour de la personne célébrée pour un anniversaire, ou un créneau pendant une soirée professionnelle. Retrouvez les conseils propres à chaque événement.",
+        "links": [
+          {
+            "href": "/videobooth-360-mariage-marseille",
+            "label": "Préparer un mariage"
+          },
+          {
+            "href": "/videobooth-360-anniversaire-marseille",
+            "label": "Organiser un anniversaire"
+          },
+          {
+            "href": "/videobooth-360-evenement-entreprise-marseille",
+            "label": "Prévoir une soirée d’entreprise"
+          }
+        ]
+      }
+    ]
   },
   "materiel-animation-soiree-marseille": {
     "title": "Matériel d’animation de soirée : le vidéobooth 360 à Marseille",
