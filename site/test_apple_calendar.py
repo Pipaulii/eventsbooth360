@@ -134,4 +134,17 @@ class CalendarTests(unittest.TestCase):
                 self.assertEqual(db.execute('SELECT count(*) FROM calendar_exports WHERE exported=1').fetchone()[0],1)
                 self.assertEqual(len(server.openings(db,date(2026,10,5),2,extra=[('2026-10-05T00:00:00','2026-10-06T00:00:00')])),0)
 
+    def test_remove_by_uid_at_actual_resource_url(self):
+        from contextlib import contextmanager
+        from unittest.mock import Mock
+        from icalendar import Calendar,Event
+        content=Calendar();event=Event();event.add('uid','eventsbooth360-example@eventsbooth360.fr');content.add_component(event)
+        other=Calendar();event=Event();event.add('uid','personal-event');other.add_component(event)
+        matching=SimpleNamespace(icalendar_instance=content,delete=Mock())
+        personal=SimpleNamespace(icalendar_instance=other,delete=Mock())
+        @contextmanager
+        def connection():yield SimpleNamespace(events=lambda:[matching,personal])
+        with patch.object(apple,'enabled',return_value=True),patch.object(apple,'calendar_connection',connection):apple.remove_booking('example')
+        matching.delete.assert_called_once();personal.delete.assert_not_called()
+
 if __name__=='__main__':unittest.main()

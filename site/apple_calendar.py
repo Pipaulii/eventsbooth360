@@ -219,10 +219,15 @@ def export_pending(connect):
         _cache.clear()
 
 def remove_booking(booking_id):
-    if not enabled():return
-    from caldav.lib.error import NotFoundError
+    if not enabled():raise CalendarUnavailable('Synchronisation iCloud désactivée.')
     uid='eventsbooth360-'+booking_id+'@eventsbooth360.fr'
     with calendar_connection() as cal:
-        try:cal.event_by_url(str(cal.url).rstrip('/')+'/'+quote(uid,safe='')+'.ics').delete()
-        except NotFoundError:pass
+        # iCloud resource URLs can differ from the URL derived from the UID.
+        # A full successful listing also finds duplicate resources with that UID.
+        matches=[]
+        for resource in cal.events():
+            events=resource.icalendar_instance.walk('VEVENT')
+            if any(str(event.get('UID',''))==uid for event in events):
+                matches.append(resource)
+        for resource in matches:resource.delete()
     with _cache_lock:_cache.clear()

@@ -114,7 +114,7 @@ def sync_calendar():
     """Retry failed calendar deletions; never recreate an admin-cancelled event."""
     with server.connect() as db:
         schema(db)
-        rows=db.execute("SELECT booking_id FROM admin_cancellations WHERE calendar_done=0 AND refund_status IN ('succeeded','pending','no_payment','already_refunded') LIMIT 5").fetchall()
+        rows=db.execute("SELECT booking_id FROM admin_cancellations WHERE calendar_done=0 AND refund_status IN ('succeeded','pending','no_payment','already_refunded') LIMIT 25").fetchall()
     for (bid,) in rows:
         try:apple_calendar.remove_booking(bid)
         except apple_calendar.CalendarUnavailable:continue
@@ -225,6 +225,9 @@ def cleanup_requested_tests():
     # Explicit owner-requested cleanup, restricted to the fixtures created in this session.
     with server.connect() as db:
         payments.schema(db);schema(db)
+        if server.setting(db,'calendar_cleanup_uid_v2','false')!='true':
+            db.execute("UPDATE admin_cancellations SET calendar_done=0 WHERE booking_id IN (SELECT id FROM bookings WHERE status IN ('removed_test','cancelled_admin'))")
+            db.execute("INSERT INTO settings(key,value) VALUES('calendar_cleanup_uid_v2','true') ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value")
         rows=db.execute("SELECT b.id,b.slot_id,b.due,b.session_id,s.start,s.end,b.status FROM bookings b LEFT JOIN slots s ON s.id=b.slot_id WHERE b.id LIKE ? OR b.id LIKE ? OR b.id LIKE ? OR b.id=?",('TEST-20261009-%','TEST-AGENDA-%','TEST-CAMILLE-202611%','6d320eca69ee5133463a828668399e68')).fetchall()
     for bid,slot,due,sid,start,end,status in rows:
         if status=='removed_test':continue
