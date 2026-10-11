@@ -97,16 +97,27 @@ class AdminTest(unittest.TestCase):
         for _ in range(5):self.assertEqual(self.browser.post('/api/admin/account',json=data,headers=self.headers).status_code,400)
         self.assertEqual(self.browser.post('/api/admin/account',json=data,headers=self.headers).status_code,429)
 
-    def test_zero_payment_test_reservation_is_authenticated_and_idempotent(self):
-        self.assertEqual(self.browser.post('/api/admin/test-reservation',json={},headers=self.headers).status_code,401)
-        self.login()
-        with patch.object(apple_calendar,'busy',return_value=[]),patch.object(apple_calendar,'export_pending'):
-            for _ in range(2):
-                response=self.browser.post('/api/admin/test-reservation',json={},headers=self.headers)
-                self.assertEqual(response.status_code,200)
+    def test_fixture_cleanup_preserves_real_bookings(self):
+        self.booking()
         with server.connect() as db:
-            self.assertEqual(db.execute("SELECT count(*) FROM bookings WHERE id='TEST-CAMILLE-20261126'").fetchone()[0],1)
-            self.assertEqual(db.execute("SELECT total,due,status FROM bookings WHERE id='TEST-CAMILLE-20261126'").fetchone(),(0,0,'confirmed'))
-            self.assertEqual(db.execute("SELECT phone FROM booking_contacts WHERE booking_id='TEST-CAMILLE-20261126'").fetchone()[0],'06 00 00 00 00')
+            slot=db.execute("INSERT INTO slots(start,end) VALUES('2026-11-26T18:00:00','2026-11-26T20:00:00')").lastrowid
+            db.execute('INSERT INTO bookings VALUES(?,?,?,?,?,?,?,?)',('TEST-CAMILLE-20261126',slot,0,0,'confirmed',None,'TEST',1))
+        with patch.object(apple_calendar,'remove_booking'):
+            admin.cleanup_requested_tests();admin.cleanup_requested_tests()
+        with server.connect() as db:
+            self.assertEqual(db.execute("SELECT status FROM bookings WHERE id='TEST-CAMILLE-20261126'").fetchone()[0],'removed_test')
+            self.assertEqual(db.execute("SELECT status FROM bookings WHERE id='booking'").fetchone()[0],'confirmed')
+            self.assertEqual(db.execute('SELECT count(*) FROM slots').fetchone()[0],1)
+
+
+    def test_manual_reservation_without_stripe(self):
+        self.login()
+        data=dict(first_name='Camille',last_name='Exemple',phone='0600000000',address='10 rue Exemple Marseille',date='2026-12-20',time='18:00',duration=2,event_type='Autre',video_name='Soiree')
+        with patch.object(apple_calendar,'busy',return_value=[]),patch.object(server,'openings',return_value=['18:00']),patch.object(apple_calendar,'export_pending'),patch('gmail_mail.deliver_reservation'),patch.object(payments,'client',side_effect=AssertionError('Stripe must not be called')):
+            result=self.browser.post('/api/admin/reservations',json=data,headers=self.headers)
+        self.assertEqual(result.status_code,200)
+        with server.connect() as db:
+            self.assertEqual(db.execute('SELECT total,due,status FROM bookings').fetchone(),(0,0,'confirmed'))
+            self.assertEqual(db.execute('SELECT first_name,last_name,phone FROM booking_contacts').fetchone(),('Camille','Exemple','0600000000'))
 
 if __name__=='__main__':unittest.main()

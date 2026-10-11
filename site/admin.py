@@ -181,10 +181,11 @@ def refresh_refunds():
 def bookings():
     import gmail_mail
     try:
+        cleanup_requested_tests()
         refresh_refunds();sync_calendar()
         with server.connect() as db:
             payments.schema(db);schema(db)
-            rows=db.execute('SELECT b.id,b.status,b.total,b.due,b.event_address,COALESCE(s.start,a.start,c.start),COALESCE(s.end,a.end,c.end),a.refund_status,a.refunded,a.calendar_done FROM bookings b LEFT JOIN slots s ON s.id=b.slot_id LEFT JOIN admin_cancellations a ON a.booking_id=b.id LEFT JOIN calendar_cancellations c ON c.booking_id=b.id ORDER BY b.created DESC LIMIT 200').fetchall()
+            rows=db.execute("SELECT b.id,b.status,b.total,b.due,b.event_address,COALESCE(s.start,a.start,c.start),COALESCE(s.end,a.end,c.end),a.refund_status,a.refunded,a.calendar_done FROM bookings b LEFT JOIN slots s ON s.id=b.slot_id LEFT JOIN admin_cancellations a ON a.booking_id=b.id LEFT JOIN calendar_cancellations c ON c.booking_id=b.id WHERE b.status!='removed_test' ORDER BY b.created DESC LIMIT 200").fetchall()
             contacts={r[0]:r[1:] for r in db.execute('SELECT booking_id,first_name,last_name,phone FROM booking_contacts').fetchall()}
             themes={r[0]:r[1:] for r in db.execute('SELECT booking_id,event_type,video_name FROM booking_personalization').fetchall()}
             gmail_mail.schema(db)
@@ -220,31 +221,58 @@ def visit_counts():
     except Exception:return jsonify(error='Compteur temporairement indisponible.'),503
 
 
-@bp.post('/api/admin/test-reservation')
+def cleanup_requested_tests():
+    # Explicit owner-requested cleanup, restricted to the fixtures created in this session.
+    with server.connect() as db:
+        payments.schema(db);schema(db)
+        rows=db.execute("SELECT b.id,b.slot_id,b.due,b.session_id,s.start,s.end,b.status FROM bookings b LEFT JOIN slots s ON s.id=b.slot_id WHERE b.id LIKE 'TEST-20261009-%' OR b.id LIKE 'TEST-AGENDA-%' OR b.id LIKE 'TEST-CAMILLE-202611%' OR b.id='6d320eca69ee5133463a828668399e68'").fetchall()
+    for bid,slot,due,sid,start,end,status in rows:
+        if status=='removed_test':continue
+        if due:
+            if not sid:continue
+            try:
+                checkout=payments.client().v1.checkout.sessions.retrieve(sid)
+                if checkout.payment_status=='paid':continue
+                if checkout.status=='open':payments.client().v1.checkout.sessions.expire(sid)
+            except Exception:continue
+        with server.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            if start and end:
+                db.execute("INSERT INTO admin_cancellations(booking_id,start,end,refund_status,created) VALUES(?,?,?,'no_payment',?) ON CONFLICT(booking_id) DO NOTHING",(bid,start,end,int(time.time())))
+            db.execute("UPDATE bookings SET status='removed_test' WHERE id=?",(bid,))
+            db.execute('DELETE FROM slots WHERE id=?',(slot,))
+    sync_calendar()
+
+@bp.post('/api/admin/reservations')
 @protected
-def test_reservation():
+def create_reservation():
     from datetime import datetime,timedelta
-    bid='TEST-CAMILLE-20261126'
-    start=datetime(2026,11,26,18);end=start+timedelta(hours=2)
+    import re,gmail_mail
+    data=request.get_json(silent=True) or {}
+    try:
+        first=data['first_name'].strip();last=data['last_name'].strip();phone=data['phone'].strip();address=data['address'].strip()
+        event=data['event_type'];video=data.get('video_name','').strip()
+        duration=int(data['duration']);start=datetime.fromisoformat(data['date']+'T'+data['time'])
+        if not all(1<=len(n)<=80 and not any(ord(c)<32 for c in n) for n in (first,last)):raise ValueError()
+        if not re.fullmatch(r'\+?[\d ().-]{9,30}',phone) or not 9<=len(re.sub(r'\D','',phone))<=15:raise ValueError()
+        if not 10<=len(address)<=500 or len(video)>120:raise ValueError()
+        if event not in ('Mariage','Baptême','Anniversaire','Soirée privée','Événement professionnel','Autre'):raise ValueError()
+        if duration not in (2,3,4) or start.tzinfo or start.date()<datetime.now().date() or start.minute not in (0,30) or start.second:raise ValueError()
+    except (KeyError,ValueError,TypeError,AttributeError):return jsonify(error='Vérifiez les coordonnées, la date et les horaires.'),400
+    bid='MANUEL-'+secrets.token_hex(12);end=start+timedelta(hours=duration)
     try:
         external=apple_calendar.busy(start.date(),start.date()+timedelta(days=1),fresh=True)
         with server.connect() as db:
             payments.schema(db);db.execute('BEGIN IMMEDIATE')
-            existing=db.execute('SELECT status FROM bookings WHERE id=?',(bid,)).fetchone()
-            if existing and existing[0]!='confirmed':return jsonify(error='Ce test a déjà été annulé.'),409
-            if not existing:
-                if '18:00' not in server.openings(db,start.date(),2,extra=external):return jsonify(error='Le créneau du test est occupé.'),409
-                slot=db.execute('INSERT INTO slots(start,end) VALUES(?,?)',(start.isoformat(),end.isoformat())).lastrowid
-                db.execute('INSERT INTO bookings VALUES(?,?,?,?,?,?,?,?)',(bid,slot,0,0,'confirmed',None,'TEST FICTIF — 10 rue Exemple, 13008 Marseille',int(time.time())))
-                db.execute('INSERT INTO booking_contacts VALUES(?,?,?,?)',(bid,'Camille TEST','Exemple','06 00 00 00 00'))
-                db.execute('INSERT INTO booking_personalization VALUES(?,?,?)',(bid,'Anniversaire','TEST — Les 30 ans de Camille'))
-            import gmail_mail
+            if start.strftime('%H:%M') not in server.openings(db,start.date(),duration,extra=external):return jsonify(error='Ce créneau est occupé ou hors des horaires disponibles.'),409
+            slot=db.execute('INSERT INTO slots(start,end) VALUES(?,?)',(start.isoformat(),end.isoformat())).lastrowid
+            db.execute('INSERT INTO bookings VALUES(?,?,?,?,?,?,?,?)',(bid,slot,0,0,'confirmed',None,address,int(time.time())))
+            db.execute('INSERT INTO booking_contacts VALUES(?,?,?,?)',(bid,first,last,phone))
+            db.execute('INSERT INTO booking_personalization VALUES(?,?,?)',(bid,event,video))
             gmail_mail.queue_reservation(db,bid)
         try:gmail_mail.deliver_reservation(bid)
         except Exception:pass
-        apple_calendar.export_pending(server.connect)
-        with server.connect() as db:
-            row=db.execute('SELECT exported FROM calendar_exports WHERE booking_id=?',(bid,)).fetchone()
-        return jsonify(ok=True,calendar_exported=bool(row and row[0]),booking_id=bid)
-    except apple_calendar.CalendarUnavailable:
-        return jsonify(error='Agenda indisponible. La réservation éventuellement créée sera synchronisée lors du prochain essai.'),503
+        try:apple_calendar.export_pending(server.connect)
+        except Exception:pass
+        return jsonify(ok=True,booking_id=bid)
+    except apple_calendar.CalendarUnavailable:return jsonify(error='Agenda indisponible. Réessayez.'),503
