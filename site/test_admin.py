@@ -71,4 +71,28 @@ class AdminTest(unittest.TestCase):
             self.assertEqual(self.browser.post('/api/admin/cancel',json={'booking_id':'booking','confirm':True},headers=self.headers).status_code,200)
         with server.connect() as db:self.assertEqual(db.execute('SELECT refund_status FROM admin_cancellations').fetchone()[0],'pending')
 
+    def test_change_account_requires_current_password_and_invalidates_sessions(self):
+        self.login()
+        old_cookie=self.browser.get_cookie(admin.COOKIE).value
+        data={'current_password':'wrong','new_password':'new-private-password-123','confirmation':'new-private-password-123'}
+        self.assertEqual(self.browser.post('/api/admin/account',json=data,headers=self.headers).status_code,400)
+        data['current_password']='long-test-password-123'
+        self.assertEqual(self.browser.post('/api/admin/account',json=data,headers={'Origin':'http://localhost'}).status_code,403)
+        data['confirmation']='different'
+        self.assertEqual(self.browser.post('/api/admin/account',json=data,headers=self.headers).status_code,400)
+        data['confirmation']=data['new_password']
+        self.assertEqual(self.browser.post('/api/admin/account',json=data,headers=self.headers).status_code,200)
+        self.browser.set_cookie(admin.COOKIE,old_cookie)
+        self.assertEqual(self.browser.get('/api/admin/bookings').status_code,401)
+        with server.connect() as db:
+            email,hashed=db.execute('SELECT email,password_hash FROM admin_users').fetchone()
+        self.assertEqual(email,'eventsbooth360@gmail.com');self.assertNotIn(data['new_password'],hashed)
+        self.assertEqual(self.browser.post('/api/admin/login',json={'email':email,'password':data['new_password']},headers={'Origin':'http://localhost'}).status_code,200)
+
+    def test_account_change_rate_limit(self):
+        self.login()
+        data={'current_password':'wrong','new_password':'new-private-password-123','confirmation':'new-private-password-123'}
+        for _ in range(5):self.assertEqual(self.browser.post('/api/admin/account',json=data,headers=self.headers).status_code,400)
+        self.assertEqual(self.browser.post('/api/admin/account',json=data,headers=self.headers).status_code,429)
+
 if __name__=='__main__':unittest.main()

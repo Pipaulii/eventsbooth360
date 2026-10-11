@@ -81,6 +81,35 @@ def login():
 def logout():
     response=jsonify(ok=True);response.delete_cookie(COOKIE,path='/');return response
 
+@bp.post('/api/admin/account')
+@protected
+def change_account():
+    data=request.get_json(silent=True) or {}
+    current=data.get('current_password');password=data.get('new_password');confirmation=data.get('confirmation')
+    if not isinstance(current,str) or len(current)>512 or not isinstance(password,str) or not 16<=len(password)<=512:
+        return jsonify(error='Choisissez un mot de passe de 16 à 512 caractères.'),400
+    if password!=confirmation:return jsonify(error='Les deux nouveaux mots de passe ne correspondent pas.'),400
+    if password==current:return jsonify(error='Choisissez un mot de passe différent de l’ancien.'),400
+    user=account();window=int(time.time())//600
+    identity='account-change:'+hashlib.sha256(user[1].encode()).hexdigest()
+    with server.connect() as db:
+        db.execute('BEGIN IMMEDIATE')
+        stored=db.execute('SELECT password_hash FROM admin_users WHERE id=1').fetchone()
+        if not stored or stored[0]!=user[1]:return jsonify(error='L’accès a déjà été modifié. Reconnectez-vous.'),409
+        row=db.execute('SELECT attempt_window,attempts FROM admin_attempts WHERE identity=?',(identity,)).fetchone()
+        attempts=row[1] if row and row[0]==window else 0
+        if attempts>=5:return jsonify(error='Trop de tentatives. Réessayez dans 10 minutes.'),429
+        if not check_password_hash(user[1],current):
+            db.execute('INSERT INTO admin_attempts VALUES(?,?,?) ON CONFLICT(identity) DO UPDATE SET attempt_window=EXCLUDED.attempt_window,attempts=EXCLUDED.attempts',(identity,window,attempts+1))
+            return jsonify(error='Le mot de passe actuel est incorrect.'),400
+        # Compare the hash inside the update to avoid overwriting a concurrent change.
+        db.execute('UPDATE admin_users SET email=?,password_hash=? WHERE id=1 AND password_hash=?',('eventsbooth360@gmail.com',generate_password_hash(password),user[1]))
+        db.execute('DELETE FROM admin_attempts WHERE identity=?',(identity,))
+    response=jsonify(ok=True,email='eventsbooth360@gmail.com')
+    # The hash-derived signing key also invalidates all other admin sessions.
+    response.delete_cookie(COOKIE,path='/')
+    return response
+
 def sync_calendar():
     """Retry failed calendar deletions; never recreate an admin-cancelled event."""
     with server.connect() as db:
