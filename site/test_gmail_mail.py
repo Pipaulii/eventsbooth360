@@ -118,4 +118,31 @@ class GmailTest(unittest.TestCase):
             gmail_mail.deliver_reservation('b');gmail_mail.deliver_reservation('b')
             self.assertEqual(send.call_count,1)
 
+    def test_customer_pdf_numbering_attachment_and_idempotency(self):
+        self.seed()
+        with server.connect() as db:
+            db.execute("INSERT INTO slots(id,start,end) VALUES(1,'2026-11-26T18:00:00','2026-11-26T20:00:00')")
+            gmail_mail.queue_reservation(db,'b','client@example.com')
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM reservation_documents').fetchone()[0],0)
+            db.execute("UPDATE bookings SET status='confirmed' WHERE id='b'")
+            gmail_mail.queue_reservation(db,'b','client@example.com')
+            gmail_mail.queue_reservation(db,'b','client@example.com')
+            docs=db.execute('SELECT number,pdf FROM reservation_documents').fetchall()
+            self.assertEqual(len(docs),1);self.assertEqual(docs[0][0],11)
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM reservation_mail').fetchone()[0],2)
+            db.execute("INSERT INTO bookings VALUES('next',1,22900,6870,'confirmed','cs2','Marseille',1)")
+            gmail_mail.queue_reservation(db,'next','next@example.com')
+            self.assertEqual(db.execute("SELECT number FROM reservation_documents WHERE booking_id='next'").fetchone()[0],12)
+        with patch.object(gmail_mail,'access_token',return_value='mock'),patch.object(gmail_mail,'send',return_value='message') as send:
+            gmail_mail.deliver_reservation('b');gmail_mail.deliver_reservation('b')
+            self.assertEqual(send.call_count,2)
+            for call in send.call_args_list:
+                attachment=call.kwargs['attachment']
+                self.assertTrue(attachment[1].startswith(b'%PDF'))
+                message=gmail_mail.compose(*call.args[:3],attachment=attachment)
+                parts=list(message.iter_attachments())
+                self.assertEqual(len(parts),1)
+                self.assertEqual(parts[0].get_content_type(),'application/pdf')
+                self.assertEqual(parts[0].get_payload(decode=True),attachment[1])
+
 if __name__=='__main__':unittest.main()

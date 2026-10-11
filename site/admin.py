@@ -264,6 +264,8 @@ def create_reservation():
         if event not in ('Mariage','Baptême','Anniversaire','Soirée privée','Événement professionnel','Autre'):raise ValueError()
         if duration not in (2,3,4) or start.tzinfo or start.date()<datetime.now().date() or start.minute not in (0,30) or start.second:raise ValueError()
     except (KeyError,ValueError,TypeError,AttributeError):return jsonify(error='Vérifiez les coordonnées, la date et les horaires.'),400
+    email=data.get('email','').strip()
+    if email and not gmail_mail.valid_email(email):return jsonify(error='Adresse e-mail invalide.'),400
     bid='MANUEL-'+secrets.token_hex(12);end=start+timedelta(hours=duration)
     try:
         external=apple_calendar.busy(start.date(),start.date()+timedelta(days=1),fresh=True)
@@ -274,7 +276,7 @@ def create_reservation():
             db.execute('INSERT INTO bookings VALUES(?,?,?,?,?,?,?,?)',(bid,slot,0,0,'confirmed',None,address,int(time.time())))
             db.execute('INSERT INTO booking_contacts VALUES(?,?,?,?)',(bid,first,last,phone))
             db.execute('INSERT INTO booking_personalization VALUES(?,?,?)',(bid,event,video))
-            gmail_mail.queue_reservation(db,bid)
+            gmail_mail.queue_reservation(db,bid,email)
         try:gmail_mail.deliver_reservation(bid)
         except Exception:pass
         try:apple_calendar.export_pending(server.connect)

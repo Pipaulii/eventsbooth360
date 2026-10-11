@@ -6,3 +6,5 @@ caldav==3.3.1
 icalendar>=6,<8
 tzdata>=2025.2
 cryptography>=44,<47
+
+reportlab>=4.2,<5

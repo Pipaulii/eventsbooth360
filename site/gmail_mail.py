@@ -29,6 +29,7 @@ def schema(db):
     db.execute('CREATE TABLE IF NOT EXISTS gmail_states(state_hash TEXT PRIMARY KEY,expires INTEGER NOT NULL,verifier TEXT NOT NULL)')
     db.execute('CREATE TABLE IF NOT EXISTS cancellation_mail(booking_id TEXT NOT NULL,recipient TEXT NOT NULL,subject TEXT NOT NULL,body TEXT NOT NULL,status TEXT NOT NULL,message_id TEXT,PRIMARY KEY(booking_id,recipient))')
     db.execute('CREATE TABLE IF NOT EXISTS reservation_mail(booking_id TEXT NOT NULL,recipient TEXT NOT NULL,subject TEXT NOT NULL,body TEXT NOT NULL,status TEXT NOT NULL,message_id TEXT,PRIMARY KEY(booking_id,recipient))')
+    db.execute('CREATE TABLE IF NOT EXISTS reservation_documents(booking_id TEXT PRIMARY KEY,number INTEGER UNIQUE NOT NULL,pdf TEXT NOT NULL,recipient TEXT NOT NULL)')
 
 def configured():
     c = payments.config()
@@ -119,7 +120,7 @@ def access_token():
     refresh = cipher().decrypt(row[0].encode()).decode()
     return token_request({'grant_type': 'refresh_token', 'refresh_token': refresh})['access_token']
 
-def compose(recipient, subject, body):
+def compose(recipient, subject, body, attachment=None):
     message = EmailMessage()
     message['From'] = 'EventsBooth360 <' + OWNER + '>'
     message['To'] = recipient
@@ -141,10 +142,11 @@ def compose(recipient, subject, body):
         '</td></tr></table></body></html>', subtype='html')
     logo = (Path(__file__).resolve().parent / 'public' / 'logo-signature.png').read_bytes()
     message.get_payload()[-1].add_related(logo, maintype='image', subtype='png', cid='<eventsbooth360-signature>', disposition='inline', filename='eventsbooth360.png')
+    if attachment:message.add_attachment(attachment[1],maintype='application',subtype='pdf',filename=attachment[0])
     return message
 
-def send(recipient, subject, body, token):
-    message = compose(recipient, subject, body)
+def send(recipient, subject, body, token, attachment=None):
+    message = compose(recipient, subject, body, attachment)
     payload = json.dumps({'raw': base64.urlsafe_b64encode(message.as_bytes()).decode()}).encode()
     req = Request('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', data=payload,
                   headers={'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'})
@@ -221,7 +223,7 @@ def deliver(bid):
             db.execute('UPDATE cancellation_mail SET status=?,message_id=? WHERE booking_id=? AND recipient=?', (status,ident,bid,recipient))
 
 
-def queue_reservation(db,bid):
+def queue_reservation(db,bid,customer_email=None):
     schema(db)
     row=db.execute("SELECT b.event_address,b.total,b.due,s.start,s.end,c.first_name,c.last_name,c.phone,p.event_type,p.video_name FROM bookings b JOIN slots s ON s.id=b.slot_id LEFT JOIN booking_contacts c ON c.booking_id=b.id LEFT JOIN booking_personalization p ON p.booking_id=b.id WHERE b.id=? AND b.status='confirmed'",(bid,)).fetchone()
     if not row:return
@@ -232,6 +234,17 @@ def queue_reservation(db,bid):
     trip=db.execute('SELECT fee,round_trip_km FROM booking_travel WHERE booking_id=?',(bid,)).fetchone()
     if trip:body=body.replace('Prix de la formule :','Total avec déplacement :');body+='\nDéplacement : '+euros(trip[0])+' ('+trip[1]+' km aller-retour, 0,13 €/km hors Marseille). Prix de la prestation seule : '+euros(total-trip[0])
     db.execute("INSERT INTO reservation_mail(booking_id,recipient,subject,body,status) VALUES(?,?,?,?,'pending') ON CONFLICT(booking_id,recipient) DO NOTHING",(bid,OWNER,'Nouvelle réservation — EventsBooth360',body))
+    if valid_email(customer_email):
+        existing=db.execute('SELECT number FROM reservation_documents WHERE booking_id=?',(bid,)).fetchone()
+        if existing:return
+        import reservation_pdf
+        number=db.execute('SELECT COALESCE(MAX(number),10)+1 FROM reservation_documents').fetchone()[0]
+        details={'booking_id':bid,'issued':datetime.now(__import__('zoneinfo').ZoneInfo('Europe/Paris')).isoformat(),'name':' '.join(n for n in [first,last] if n),'email':customer_email,'phone':phone,'address':address,'start':start,'end':end,'duration':str(int((datetime.fromisoformat(end)-datetime.fromisoformat(start)).total_seconds()/3600)),'event':event,'video_name':theme,'total':total,'due':due,'travel_fee':trip[0] if trip else 0,'travel_km':trip[1] if trip else None}
+        pdf=reservation_pdf.render(number,details)
+        db.execute('INSERT INTO reservation_documents VALUES(?,?,?,?)',(bid,number,base64.b64encode(pdf).decode(),customer_email))
+        if customer_email!=OWNER:
+            db.execute("INSERT INTO reservation_mail(booking_id,recipient,subject,body,status) VALUES(?,?,?,?,'pending') ON CONFLICT(booking_id,recipient) DO NOTHING",(bid,customer_email,'Votre réservation EventsBooth360 — récapitulatif n° '+str(number),'Bonjour '+(first or '')+',\n\nVotre réservation est confirmée. Vous trouverez en pièce jointe le récapitulatif détaillé n° '+str(number)+'.\n\nRéférence : '+bid+'\nPour toute question ou modification, répondez à ce mail.'))
+
 
 def deliver_reservation(bid):
     """Never retries an ambiguous send: sending/unknown require a mailbox check."""
@@ -247,7 +260,11 @@ def deliver_reservation(bid):
             if not current or current[0] != 'pending': continue
             db.execute("UPDATE reservation_mail SET status='sending' WHERE booking_id=? AND recipient=?", (bid,recipient))
         status, ident = 'unknown', None
-        try: ident = send(recipient,subject,body,token); status = 'sent'
+        try:
+            with server.connect() as db:document=db.execute('SELECT number,pdf FROM reservation_documents WHERE booking_id=?',(bid,)).fetchone()
+            if document:ident=send(recipient,subject,body,token,attachment=('Reservation-EventsBooth360-'+str(document[0])+'.pdf',base64.b64decode(document[1])))
+            else:ident=send(recipient,subject,body,token)
+            status='sent'
         except HTTPError: status = 'failed'
         except Exception: pass
         with server.connect() as db:
