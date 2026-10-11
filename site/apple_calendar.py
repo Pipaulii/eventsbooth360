@@ -161,7 +161,7 @@ def reconcile_deletions(connect, first_day, last_day):
             db.execute('DELETE FROM calendar_missing WHERE booking_id=?',(booking_id,))
     with _cache_lock:_cache.clear()
 
-def event_data(booking_id, begin, finish):
+def event_data(booking_id, begin, finish, address='', first_name='', last_name='', phone='', event_type='', video_name=''):
     from icalendar import Calendar, Event
     start = datetime.fromisoformat(begin).replace(tzinfo=PARIS)
     end = datetime.fromisoformat(finish).replace(tzinfo=PARIS)
@@ -175,8 +175,16 @@ def event_data(booking_id, begin, finish):
     # UTC avoids dependence on a server's VTIMEZONE implementation.
     event.add('dtstart', start.astimezone(timezone.utc))
     event.add('dtend', end.astimezone(timezone.utc))
-    event.add('summary', f'EventsBooth360 — location confirmée — {hours} h')
-    event.add('description', 'Réservation ' + booking_id +
+    name = ' '.join(part.strip() for part in (first_name or '', last_name or '') if part.strip())
+    event.add('summary', f'EventsBooth360 — {name or "location confirmée"} — {hours} h')
+    if address:
+        event.add('location', address)
+    details = ['Réservation ' + booking_id]
+    for label, value in (('Client', name), ('Téléphone', phone), ('Lieu', address),
+                         ('Événement', event_type), ('Filtres vidéo', video_name)):
+        if value:
+            details.append(label + ' : ' + value)
+    event.add('description', '\n'.join(details) +
               '\nSupprimer cet événement libère le créneau sur le site après vérification. Aucun remboursement automatique. Modifier ses horaires ne déplace pas la réservation du site.')
     event.add('status', 'CONFIRMED')
     event.add('transp', 'OPAQUE')
@@ -194,18 +202,18 @@ def export_pending(connect):
         schema(db)
         db.execute('BEGIN IMMEDIATE')
         db.execute("INSERT INTO calendar_exports(booking_id) SELECT id FROM bookings WHERE status='confirmed' ON CONFLICT(booking_id) DO NOTHING")
-        rows = db.execute("SELECT b.id,s.start,s.end FROM bookings b JOIN slots s ON s.id=b.slot_id JOIN calendar_exports c ON c.booking_id=b.id WHERE b.status='confirmed' AND c.exported=0 ORDER BY b.created LIMIT 5").fetchall()
+        rows = db.execute("SELECT b.id,s.start,s.end,b.event_address,co.first_name,co.last_name,co.phone,p.event_type,p.video_name FROM bookings b JOIN slots s ON s.id=b.slot_id JOIN calendar_exports c ON c.booking_id=b.id LEFT JOIN booking_contacts co ON co.booking_id=b.id LEFT JOIN booking_personalization p ON p.booking_id=b.id WHERE b.status='confirmed' AND c.exported=0 ORDER BY b.created LIMIT 5").fetchall()
         if not rows:
             return
         with calendar_connection() as cal:
-            for booking_id, begin, finish in rows:
+            for booking_id, begin, finish, *details in rows:
                 uid = 'eventsbooth360-' + booking_id + '@eventsbooth360.fr'
                 try:
                     # iCloud can reject UID-filtered REPORT queries. Use the
                     # deterministic resource URL for idempotent GET instead.
                     cal.event_by_url(str(cal.url).rstrip('/') + '/' + quote(uid, safe='') + '.ics')
                 except NotFoundError:
-                    cal.add_event(event_data(booking_id, begin, finish))
+                    cal.add_event(event_data(booking_id, begin, finish, *details))
                 db.execute('UPDATE calendar_exports SET exported=1 WHERE booking_id=?', (booking_id,))
     with _cache_lock:
         _cache.clear()

@@ -59,6 +59,18 @@ class CalendarTests(unittest.TestCase):
             spans=apple.intervals([SimpleNamespace(icalendar_instance=content)],datetime(2026,1,1),datetime(2027,1,1))
             self.assertEqual(spans,[(day+'T17:00:00',day+'T19:00:00')])
 
+    def test_private_contact_details_in_calendar(self):
+        content=Calendar.from_ical(apple.event_data('test-contact','2026-12-10T17:00:00','2026-12-10T19:00:00',
+            '12 rue Exemple, Marseille','Marie','Exemple','06 12 34 56 78','Mariage','Marie et Alex'))
+        event=content.walk('VEVENT')[0]
+        self.assertEqual(str(event['summary']),'EventsBooth360 — Marie Exemple — 2 h')
+        self.assertEqual(str(event['location']),'12 rue Exemple, Marseille')
+        self.assertIn('Téléphone : 06 12 34 56 78',str(event['description']))
+        self.assertIn('Événement : Mariage',str(event['description']))
+        self.assertEqual(str(event['class']),'PRIVATE')
+        self.assertEqual(apple.intervals([SimpleNamespace(icalendar_instance=content)],datetime(2026,12,1),datetime(2027,1,1)),
+            [('2026-12-10T17:00:00','2026-12-10T19:00:00')])
+
     def test_unknown_recurrence_refuses_false_availability(self):
         with self.assertRaises(apple.CalendarUnavailable):
             apple.intervals([resource(date(2026,10,4),rrule={'FREQ':'WEEKLY'})],datetime(2026,10,1),datetime(2026,11,1))
@@ -117,7 +129,7 @@ class CalendarTests(unittest.TestCase):
                 with self.assertRaises(apple.CalendarUnavailable):apple.export_pending(server.connect)
                 apple.export_pending(server.connect);apple.export_pending(server.connect)
             self.assertEqual(len(calls),1)
-            self.assertNotIn('private address',next(iter(saved.values())))
+            self.assertIn('private address',next(iter(saved.values())))
             with server.connect() as db:
                 self.assertEqual(db.execute('SELECT count(*) FROM calendar_exports WHERE exported=1').fetchone()[0],1)
                 self.assertEqual(len(server.openings(db,date(2026,10,5),2,extra=[('2026-10-05T00:00:00','2026-10-06T00:00:00')])),0)
