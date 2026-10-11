@@ -94,3 +94,9 @@ def webhook():
     except Exception:return jsonify(error='Traitement temporairement indisponible.'),503
 @app.errorhandler(404)
 def missing(e):return 'Page introuvable. <a href="/">Revenir Ã  EventsBooth360</a>',404
+
+@app.get('/confidentialite')
+def privacy_page():return send_from_directory(ROOT/'public','confidentialite.html')
+
+@app.get('/conditions-utilisation')
+def terms_page():return send_from_directory(ROOT/'public','conditions-utilisation.html')
