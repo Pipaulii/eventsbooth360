@@ -95,6 +95,9 @@ def webhook(payload,signature,connect):
                     if obj.get('amount_total')!=due or obj.get('currency')!='eur':raise PaymentError('Montant incohérent.')
                     if status in ('expired','failed'):raise PaymentError('Réservation expirée : intervention nécessaire.')
                     db.execute('UPDATE bookings SET status=?,session_id=? WHERE id=?',('confirmed',obj['id'],bid))
+                    if status!='confirmed':
+                        import gmail_mail
+                        gmail_mail.queue_reservation(db,bid)
                 elif status!='confirmed':db.execute('UPDATE bookings SET status=? WHERE id=?',('processing',bid))
             elif kind in ('checkout.session.expired','checkout.session.async_payment_failed') and status!='confirmed':
                 db.execute('DELETE FROM slots WHERE id=?',(slot,));db.execute('UPDATE bookings SET status=? WHERE id=?',('expired' if kind.endswith('expired') else 'failed',bid))

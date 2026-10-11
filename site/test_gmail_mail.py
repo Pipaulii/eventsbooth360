@@ -102,4 +102,20 @@ class GmailTest(unittest.TestCase):
         self.assertTrue(images[0].get_payload(decode=True).startswith(b'\x89PNG'))
         self.assertIn('06 11 57 46 64',message.get_body(preferencelist=('plain',)).get_content())
 
+    def test_new_reservation_details_and_single_delivery(self):
+        self.seed()
+        with server.connect() as db:
+            db.execute("INSERT INTO slots(id,start,end) VALUES(1,'2026-11-26T18:00:00','2026-11-26T20:00:00')")
+            db.execute("UPDATE bookings SET status='confirmed' WHERE id='b'")
+            db.execute("UPDATE booking_contacts SET first_name='Camille',last_name='Exemple',phone='06 00 00 00 00' WHERE booking_id='b'")
+            db.execute("UPDATE booking_personalization SET event_type='Anniversaire',video_name='Les 30 ans de Camille' WHERE booking_id='b'")
+            gmail_mail.queue_reservation(db,'b');gmail_mail.queue_reservation(db,'b')
+            rows=db.execute('SELECT recipient,body FROM reservation_mail').fetchall()
+        self.assertEqual(len(rows),1);self.assertEqual(rows[0][0],gmail_mail.OWNER)
+        for detail in ['Camille','Exemple','06 00 00 00 00','10 rue Exemple','Anniversaire','Les 30 ans de Camille','26/11/2026','18:00','20:00','229,00','68,70','160,30']:
+            self.assertIn(detail,rows[0][1])
+        with patch.object(gmail_mail,'access_token',return_value='mock'),patch.object(gmail_mail,'send',return_value='message') as send:
+            gmail_mail.deliver_reservation('b');gmail_mail.deliver_reservation('b')
+            self.assertEqual(send.call_count,1)
+
 if __name__=='__main__':unittest.main()

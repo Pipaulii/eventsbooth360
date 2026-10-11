@@ -84,6 +84,8 @@ def webhook():
     if not payments.config().get('DATABASE_URL'):return jsonify(error='Planning persistant non connectÃ©.'),503
     try:
         payments.webhook(request.get_data(),request.headers.get('Stripe-Signature',''),server.connect)
+        try:gmail_mail.deliver_reservations()
+        except Exception:app.logger.warning('Notification de réservation en attente.')
         # DB confirmation is durable before exporting. A 503 makes Stripe retry;
         # the idempotent webhook then retries the pending export without a new charge.
         apple_calendar.export_pending(server.connect)

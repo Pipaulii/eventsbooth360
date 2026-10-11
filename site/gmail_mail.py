@@ -28,6 +28,7 @@ def schema(db):
     db.execute('CREATE TABLE IF NOT EXISTS gmail_connection(key TEXT PRIMARY KEY,value TEXT NOT NULL)')
     db.execute('CREATE TABLE IF NOT EXISTS gmail_states(state_hash TEXT PRIMARY KEY,expires INTEGER NOT NULL,verifier TEXT NOT NULL)')
     db.execute('CREATE TABLE IF NOT EXISTS cancellation_mail(booking_id TEXT NOT NULL,recipient TEXT NOT NULL,subject TEXT NOT NULL,body TEXT NOT NULL,status TEXT NOT NULL,message_id TEXT,PRIMARY KEY(booking_id,recipient))')
+    db.execute('CREATE TABLE IF NOT EXISTS reservation_mail(booking_id TEXT NOT NULL,recipient TEXT NOT NULL,subject TEXT NOT NULL,body TEXT NOT NULL,status TEXT NOT NULL,message_id TEXT,PRIMARY KEY(booking_id,recipient))')
 
 def configured():
     c = payments.config()
@@ -218,3 +219,41 @@ def deliver(bid):
         except Exception: pass
         with server.connect() as db:
             db.execute('UPDATE cancellation_mail SET status=?,message_id=? WHERE booking_id=? AND recipient=?', (status,ident,bid,recipient))
+
+
+def queue_reservation(db,bid):
+    schema(db)
+    row=db.execute("SELECT b.event_address,b.total,b.due,s.start,s.end,c.first_name,c.last_name,c.phone,p.event_type,p.video_name FROM bookings b JOIN slots s ON s.id=b.slot_id LEFT JOIN booking_contacts c ON c.booking_id=b.id LEFT JOIN booking_personalization p ON p.booking_id=b.id WHERE b.id=? AND b.status='confirmed'",(bid,)).fetchone()
+    if not row:return
+    address,total,due,start,end,first,last,phone,event,theme=row
+    euros=lambda n:f'{n/100:.2f} €'.replace('.',',')
+    when=datetime.fromisoformat(start).strftime('%d/%m/%Y à %H:%M')+' — '+datetime.fromisoformat(end).strftime('%d/%m/%Y à %H:%M')+' (heure de Paris)'
+    body='\n'.join(['Nouvelle réservation confirmée'+(' — TEST SANS PAIEMENT' if total==0 else ''),'','Référence : '+bid,'Nom : '+(last or 'Non renseigné'),'Prénom : '+(first or 'Non renseigné'),'Téléphone : '+(phone or 'Non renseigné'),'Adresse de livraison / événement : '+address,'Événement : '+(event or 'Non renseigné'),'Personnalisation vidéo : '+(theme or 'Non renseignée'),'Date et horaires : '+when,'Durée : '+str((datetime.fromisoformat(end)-datetime.fromisoformat(start)).total_seconds()/3600)+' h','Prix de la formule : '+euros(total),'Montant payé en ligne : '+euros(due),'Solde de la formule : '+euros(total-due),'','Consultez l’administration pour gérer cette réservation : https://eventsbooth360.fr/admin'])
+    db.execute("INSERT INTO reservation_mail(booking_id,recipient,subject,body,status) VALUES(?,?,?,?,'pending') ON CONFLICT(booking_id,recipient) DO NOTHING",(bid,OWNER,'Nouvelle réservation — EventsBooth360',body))
+
+def deliver_reservation(bid):
+    """Never retries an ambiguous send: sending/unknown require a mailbox check."""
+    try: token = access_token()
+    except Exception: return
+    with server.connect() as db:
+        schema(db)
+        rows = db.execute("SELECT recipient,subject,body FROM reservation_mail WHERE booking_id=? AND status='pending'", (bid,)).fetchall()
+    for recipient,subject,body in rows:
+        with server.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            current = db.execute('SELECT status FROM reservation_mail WHERE booking_id=? AND recipient=?', (bid,recipient)).fetchone()
+            if not current or current[0] != 'pending': continue
+            db.execute("UPDATE reservation_mail SET status='sending' WHERE booking_id=? AND recipient=?", (bid,recipient))
+        status, ident = 'unknown', None
+        try: ident = send(recipient,subject,body,token); status = 'sent'
+        except HTTPError: status = 'failed'
+        except Exception: pass
+        with server.connect() as db:
+            db.execute('UPDATE reservation_mail SET status=?,message_id=? WHERE booking_id=? AND recipient=?', (status,ident,bid,recipient))
+
+
+def deliver_reservations():
+    with server.connect() as db:
+        schema(db)
+        rows=db.execute("SELECT DISTINCT booking_id FROM reservation_mail WHERE status='pending' LIMIT 5").fetchall()
+    for (bid,) in rows:deliver_reservation(bid)

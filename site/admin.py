@@ -238,6 +238,10 @@ def test_reservation():
                 db.execute('INSERT INTO bookings VALUES(?,?,?,?,?,?,?,?)',(bid,slot,0,0,'confirmed',None,'TEST FICTIF — 10 rue Exemple, 13008 Marseille',int(time.time())))
                 db.execute('INSERT INTO booking_contacts VALUES(?,?,?,?)',(bid,'Camille TEST','Exemple','06 00 00 00 00'))
                 db.execute('INSERT INTO booking_personalization VALUES(?,?,?)',(bid,'Anniversaire','TEST — Les 30 ans de Camille'))
+            import gmail_mail
+            gmail_mail.queue_reservation(db,bid)
+        try:gmail_mail.deliver_reservation(bid)
+        except Exception:pass
         apple_calendar.export_pending(server.connect)
         with server.connect() as db:
             row=db.execute('SELECT exported FROM calendar_exports WHERE booking_id=?',(bid,)).fetchone()
