@@ -225,7 +225,7 @@ def cleanup_requested_tests():
     # Explicit owner-requested cleanup, restricted to the fixtures created in this session.
     with server.connect() as db:
         payments.schema(db);schema(db)
-        rows=db.execute("SELECT b.id,b.slot_id,b.due,b.session_id,s.start,s.end,b.status FROM bookings b LEFT JOIN slots s ON s.id=b.slot_id WHERE b.id LIKE 'TEST-20261009-%' OR b.id LIKE 'TEST-AGENDA-%' OR b.id LIKE 'TEST-CAMILLE-202611%' OR b.id='6d320eca69ee5133463a828668399e68'").fetchall()
+        rows=db.execute("SELECT b.id,b.slot_id,b.due,b.session_id,s.start,s.end,b.status FROM bookings b LEFT JOIN slots s ON s.id=b.slot_id WHERE b.id LIKE ? OR b.id LIKE ? OR b.id LIKE ? OR b.id=?",('TEST-20261009-%','TEST-AGENDA-%','TEST-CAMILLE-202611%','6d320eca69ee5133463a828668399e68')).fetchall()
     for bid,slot,due,sid,start,end,status in rows:
         if status=='removed_test':continue
         if due:
