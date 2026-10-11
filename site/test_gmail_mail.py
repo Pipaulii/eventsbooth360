@@ -7,7 +7,8 @@ from urllib.parse import parse_qs,urlparse
 from unittest.mock import patch
 from urllib.error import HTTPError
 sys.path.insert(0,str(Path(__file__).resolve().parent))
-import app,server,payments,admin,gmail_mail
+import payments
+import app,server,admin,gmail_mail
 
 class GmailTest(unittest.TestCase):
     def setUp(self):
@@ -87,5 +88,18 @@ class GmailTest(unittest.TestCase):
         with patch.object(gmail_mail,'access_token',return_value='mock'),patch.object(gmail_mail,'send') as send:
             r=self.browser.post('/api/admin/gmail/test',json={'recipient':'evil@example.com'},headers=self.headers)
             self.assertEqual(r.status_code,200);self.assertEqual(send.call_args.args[0],gmail_mail.OWNER)
+
+    def test_signature_embedded_and_customer_text_escaped(self):
+        message=gmail_mail.compose('client@example.com','Test','Client : <script>test</script>\nLieu : A & B')
+        html=message.get_body(preferencelist=('html',)).get_content()
+        self.assertIn('&lt;script&gt;',html);self.assertNotIn('<script>',html)
+        self.assertIn('cid:eventsbooth360-signature',html)
+        self.assertIn('tel:+33611574664',html)
+        self.assertIn('https://eventsbooth360.fr',html)
+        images=[part for part in message.walk() if part.get_content_type()=='image/png']
+        self.assertEqual(len(images),1)
+        self.assertEqual(images[0]['Content-ID'],'<eventsbooth360-signature>')
+        self.assertTrue(images[0].get_payload(decode=True).startswith(b'\x89PNG'))
+        self.assertIn('06 11 57 46 64',message.get_body(preferencelist=('plain',)).get_content())
 
 if __name__=='__main__':unittest.main()

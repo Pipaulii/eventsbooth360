@@ -7,6 +7,8 @@ import secrets
 import time
 from datetime import datetime
 from email.message import EmailMessage
+from html import escape
+from pathlib import Path
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
@@ -116,13 +118,32 @@ def access_token():
     refresh = cipher().decrypt(row[0].encode()).decode()
     return token_request({'grant_type': 'refresh_token', 'refresh_token': refresh})['access_token']
 
-def send(recipient, subject, body, token):
+def compose(recipient, subject, body):
     message = EmailMessage()
     message['From'] = 'EventsBooth360 <' + OWNER + '>'
     message['To'] = recipient
     message['Subject'] = subject
     message['Reply-To'] = OWNER
-    message.set_content(body)
+    # Remove the older plain footer when processing an already queued message.
+    old_footer = '\nEventsBooth360 — 06 11 57 46 64\nhttps://eventsbooth360.fr'
+    body = body.replace(old_footer, '').rstrip()
+    message.set_content(body + '\n\nEventsBooth360\nL’expérience vidéo à 360°\n06 11 57 46 64\neventsbooth360@gmail.com\nhttps://eventsbooth360.fr\n')
+    content = escape(body).replace('\n', '<br>')
+    message.add_alternative('<!doctype html><html lang="fr"><body style="margin:0;padding:24px;background:#fff;color:#171a20;font:15px/1.6 Arial,sans-serif">'
+        '<div>' + content + '</div>'
+        '<table role="presentation" cellspacing="0" cellpadding="0" style="margin-top:28px;border-top:1px solid #edc87f;padding-top:18px"><tr><td>'
+        '<img src="cid:eventsbooth360-signature" width="360" height="84" alt="EventsBooth360 — L’expérience vidéo à 360°" style="display:block;width:360px;max-width:100%;height:auto;border:0">'
+        '</td></tr><tr><td style="padding-top:12px;font:14px/1.7 Arial,sans-serif;color:#171a20">'
+        '<a href="tel:+33611574664" style="color:#171a20;text-decoration:none">06 11 57 46 64</a><br>'
+        '<a href="mailto:eventsbooth360@gmail.com" style="color:#171a20">eventsbooth360@gmail.com</a><br>'
+        '<a href="https://eventsbooth360.fr" style="color:#785820">eventsbooth360.fr</a>'
+        '</td></tr></table></body></html>', subtype='html')
+    logo = (Path(__file__).resolve().parent / 'public' / 'logo-signature.png').read_bytes()
+    message.get_payload()[-1].add_related(logo, maintype='image', subtype='png', cid='<eventsbooth360-signature>', disposition='inline', filename='eventsbooth360.png')
+    return message
+
+def send(recipient, subject, body, token):
+    message = compose(recipient, subject, body)
     payload = json.dumps({'raw': base64.urlsafe_b64encode(message.as_bytes()).decode()}).encode()
     req = Request('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', data=payload,
                   headers={'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'})
