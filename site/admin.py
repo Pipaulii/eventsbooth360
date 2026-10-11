@@ -167,3 +167,10 @@ def cancellation():
         cancel(bid);sync_calendar();return jsonify(ok=True)
     except payments.PaymentError as e:return jsonify(error=str(e)),400
     except Exception:return jsonify(error='Stripe indisponible ou autorisation manquante. Réessayez avec ce même bouton ; vérifiez Stripe si le problème persiste.'),503
+
+@bp.get('/api/admin/visits')
+@protected
+def visit_counts():
+    import visits
+    try:return jsonify(visits.summary())
+    except Exception:return jsonify(error='Compteur temporairement indisponible.'),503

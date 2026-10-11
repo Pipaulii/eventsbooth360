@@ -6,6 +6,7 @@ from flask import Flask,request,jsonify,send_from_directory
 import payments,server,apple_calendar
 import admin
 import seo
+import visits
 ROOT=Path(__file__).resolve().parent
 app=Flask(__name__,static_folder=str(ROOT/'public'),static_url_path='/assets')
 app.config['MAX_CONTENT_LENGTH']=65536
@@ -18,6 +19,9 @@ def security(response):
     response.headers['Referrer-Policy']='strict-origin-when-cross-origin'
     if request.path.startswith(('/api/','/admin')):response.headers['Cache-Control']='no-store'
     if request.path.startswith(('/admin','/api/')) or request.path=='/health':response.headers['X-Robots-Tag']='noindex, nofollow'
+    if request.method=='GET' and response.status_code==200 and response.mimetype=='text/html' and (request.path=='/' or request.path.lstrip('/') in seo.PAGES):
+        try:visits.record()
+        except Exception:app.logger.warning('Compteur de visites temporairement indisponible.')
     return response
 @app.get('/robots.txt')
 def robots():
