@@ -41,9 +41,9 @@ def openings(db,day,duration,extra=()):
     start=datetime.combine(day,datetime.min.time()).replace(hour=10)
     last_start=start.replace(hour=23)
     close=last_start+timedelta(hours=duration)
-    before=timedelta(minutes=0);after=timedelta(minutes=60)
+    before=timedelta(minutes=0);after=timedelta(hours=2)
     occupied=db.execute('SELECT start,end FROM slots WHERE start < ? AND end > ?',((close+after+before).isoformat(),(start-before-after).isoformat())).fetchall()
-    occupied=[((datetime.fromisoformat(a)-before).isoformat(),(datetime.fromisoformat(b)+after).isoformat()) for a,b in occupied]+list(extra)
+    occupied=[((datetime.fromisoformat(a)-before).isoformat(),(datetime.fromisoformat(b)+after).isoformat()) for a,b in list(occupied)+list(extra)]
     result=[]
     while start<=last_start:
         end=start+timedelta(hours=duration)
