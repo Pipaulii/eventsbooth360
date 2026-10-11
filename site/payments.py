@@ -48,6 +48,10 @@ def checkout(data,connect,openings,setting):
         if duration not in (2,3,4) or mode not in ('deposit','full') or start.tzinfo or start.date()<=datetime.now().date() or len(address)<10 or len(address)>500:raise ValueError()
         if start.minute not in (0,30) or start.second:raise ValueError()
     except (KeyError,ValueError,TypeError,AttributeError):raise PaymentError('Vérifiez vos nom, prénom, téléphone, adresse et créneau. Réservez au plus tôt demain.')
+    email=data.get('email','').strip()
+    if email:
+        from gmail_mail import valid_email
+        if not valid_email(email):raise PaymentError('Renseignez une adresse e-mail valide.')
     import travel
     try:trip=travel.verify(data.get('travel_token'),address)
     except travel.TravelError as e:raise PaymentError(str(e)) from None
@@ -71,6 +75,7 @@ def checkout(data,connect,openings,setting):
     origin=config().get('SITE_URL','http://127.0.0.1:3600').rstrip('/')
     label='Acompte 30 %' if mode=='deposit' else 'Paiement total'
     params={'mode':'payment','locale':'fr','customer_creation':'always','billing_address_collection':'required','phone_number_collection':{'enabled':True},'invoice_creation':{'enabled':True},'integration_identifier':'eventsbooth360_'+''.join(secrets.choice('abcdefghijklmnopqrstuvwxyz') for _ in range(8)),'client_reference_id':booking_id,'metadata':{'booking_id':booking_id},'line_items':[{'quantity':1,'price_data':{'currency':'eur','unit_amount':due,'product_data':{'name':f'EventsBooth360 — {duration} h — {label}','description':f'{start:%d/%m/%Y %H:%M} · Formule {base/100:.2f} EUR + déplacement {trip['fee_cents']/100:.2f} EUR · Total {total/100:.2f} EUR · Solde {(total-due)/100:.2f} EUR'}}}],'expires_at':int(time.time())+1800,'success_url':origin+'/?payment=processing#disponibilites','cancel_url':origin+'/?payment=cancelled#disponibilites'}
+    if email:params['customer_email']=email
     try:session=client().v1.checkout.sessions.create(params,options={'idempotency_key':booking_id})
     except Exception:
         # Keep the hold on ambiguous API failures: a remote session may have been created.
