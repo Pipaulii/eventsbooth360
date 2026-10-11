@@ -105,8 +105,8 @@ class AdminTest(unittest.TestCase):
                 response=self.browser.post('/api/admin/test-reservation',json={},headers=self.headers)
                 self.assertEqual(response.status_code,200)
         with server.connect() as db:
-            self.assertEqual(db.execute("SELECT count(*) FROM bookings WHERE id='TEST-CAMILLE-20261124'").fetchone()[0],1)
-            self.assertEqual(db.execute("SELECT total,due,status FROM bookings WHERE id='TEST-CAMILLE-20261124'").fetchone(),(0,0,'confirmed'))
-            self.assertEqual(db.execute("SELECT phone FROM booking_contacts WHERE booking_id='TEST-CAMILLE-20261124'").fetchone()[0],'06 00 00 00 00')
+            self.assertEqual(db.execute("SELECT count(*) FROM bookings WHERE id='TEST-CAMILLE-20261125'").fetchone()[0],1)
+            self.assertEqual(db.execute("SELECT total,due,status FROM bookings WHERE id='TEST-CAMILLE-20261125'").fetchone(),(0,0,'confirmed'))
+            self.assertEqual(db.execute("SELECT phone FROM booking_contacts WHERE booking_id='TEST-CAMILLE-20261125'").fetchone()[0],'06 00 00 00 00')
 
 if __name__=='__main__':unittest.main()

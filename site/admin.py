@@ -224,8 +224,8 @@ def visit_counts():
 @protected
 def test_reservation():
     from datetime import datetime,timedelta
-    bid='TEST-CAMILLE-20261124'
-    start=datetime(2026,11,24,18);end=start+timedelta(hours=2)
+    bid='TEST-CAMILLE-20261125'
+    start=datetime(2026,11,25,18);end=start+timedelta(hours=2)
     try:
         external=apple_calendar.busy(start.date(),start.date()+timedelta(days=1),fresh=True)
         with server.connect() as db:
