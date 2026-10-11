@@ -97,4 +97,16 @@ class AdminTest(unittest.TestCase):
         for _ in range(5):self.assertEqual(self.browser.post('/api/admin/account',json=data,headers=self.headers).status_code,400)
         self.assertEqual(self.browser.post('/api/admin/account',json=data,headers=self.headers).status_code,429)
 
+    def test_zero_payment_test_reservation_is_authenticated_and_idempotent(self):
+        self.assertEqual(self.browser.post('/api/admin/test-reservation',json={},headers=self.headers).status_code,401)
+        self.login()
+        with patch.object(apple_calendar,'busy',return_value=[]),patch.object(apple_calendar,'export_pending'):
+            for _ in range(2):
+                response=self.browser.post('/api/admin/test-reservation',json={},headers=self.headers)
+                self.assertEqual(response.status_code,200)
+        with server.connect() as db:
+            self.assertEqual(db.execute("SELECT count(*) FROM bookings WHERE id='TEST-CAMILLE-20261124'").fetchone()[0],1)
+            self.assertEqual(db.execute("SELECT total,due,status FROM bookings WHERE id='TEST-CAMILLE-20261124'").fetchone(),(0,0,'confirmed'))
+            self.assertEqual(db.execute("SELECT phone FROM booking_contacts WHERE booking_id='TEST-CAMILLE-20261124'").fetchone()[0],'06 00 00 00 00')
+
 if __name__=='__main__':unittest.main()

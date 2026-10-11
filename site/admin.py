@@ -218,3 +218,29 @@ def visit_counts():
     import visits
     try:return jsonify(visits.summary())
     except Exception:return jsonify(error='Compteur temporairement indisponible.'),503
+
+
+@bp.post('/api/admin/test-reservation')
+@protected
+def test_reservation():
+    from datetime import datetime,timedelta
+    bid='TEST-CAMILLE-20261124'
+    start=datetime(2026,11,24,18);end=start+timedelta(hours=2)
+    try:
+        external=apple_calendar.busy(start.date(),start.date()+timedelta(days=1),fresh=True)
+        with server.connect() as db:
+            payments.schema(db);db.execute('BEGIN IMMEDIATE')
+            existing=db.execute('SELECT status FROM bookings WHERE id=?',(bid,)).fetchone()
+            if existing and existing[0]!='confirmed':return jsonify(error='Ce test a déjà été annulé.'),409
+            if not existing:
+                if '18:00' not in server.openings(db,start.date(),2,extra=external):return jsonify(error='Le créneau du test est occupé.'),409
+                slot=db.execute('INSERT INTO slots(start,end) VALUES(?,?)',(start.isoformat(),end.isoformat())).lastrowid
+                db.execute('INSERT INTO bookings VALUES(?,?,?,?,?,?,?,?)',(bid,slot,0,0,'confirmed',None,'TEST FICTIF — 10 rue Exemple, 13008 Marseille',int(time.time())))
+                db.execute('INSERT INTO booking_contacts VALUES(?,?,?,?)',(bid,'Camille TEST','Exemple','06 00 00 00 00'))
+                db.execute('INSERT INTO booking_personalization VALUES(?,?,?)',(bid,'Anniversaire','TEST — Les 30 ans de Camille'))
+        apple_calendar.export_pending(server.connect)
+        with server.connect() as db:
+            row=db.execute('SELECT exported FROM calendar_exports WHERE booking_id=?',(bid,)).fetchone()
+        return jsonify(ok=True,calendar_exported=bool(row and row[0]),booking_id=bid)
+    except apple_calendar.CalendarUnavailable:
+        return jsonify(error='Agenda indisponible. La réservation éventuellement créée sera synchronisée lors du prochain essai.'),503
