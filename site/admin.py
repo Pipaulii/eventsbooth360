@@ -15,7 +15,7 @@ def account():
         row=db.execute('SELECT email,password_hash FROM admin_users WHERE id=1').fetchone()
         if not row:
             c=payments.config();email=c.get('ADMIN_EMAIL','').strip().casefold();pw=c.get('ADMIN_PASSWORD','')
-            if '@' not in email or len(pw)<16:return None
+            if '@' not in email or len(pw)<8:return None
             db.execute('INSERT INTO admin_users VALUES(1,?,?)',(email,generate_password_hash(pw)))
             row=db.execute('SELECT email,password_hash FROM admin_users WHERE id=1').fetchone()
         return row
@@ -54,7 +54,7 @@ def state():
     return jsonify(configured=configured(),authenticated=bool(auth),csrf=auth['csrf'] if auth else None)
 @bp.post('/api/admin/login')
 def login():
-    if not configured():return jsonify(error='Ajoutez ADMIN_EMAIL et ADMIN_PASSWORD dans Render (mot de passe d’au moins 16 caractères).'),503
+    if not configured():return jsonify(error='Ajoutez ADMIN_EMAIL et ADMIN_PASSWORD dans Render (mot de passe d’au moins 8 caractères).'),503
     if not origin_ok():return jsonify(error='Origine refusée.'),403
     data=request.get_json(silent=True) or {};candidate=data.get('password','')
     if not isinstance(candidate,str) or len(candidate)>512:return jsonify(error='Mot de passe invalide.'),400
@@ -86,8 +86,8 @@ def logout():
 def change_account():
     data=request.get_json(silent=True) or {}
     current=data.get('current_password');password=data.get('new_password');confirmation=data.get('confirmation')
-    if not isinstance(current,str) or len(current)>512 or not isinstance(password,str) or not 16<=len(password)<=512:
-        return jsonify(error='Choisissez un mot de passe de 16 à 512 caractères.'),400
+    if not isinstance(current,str) or len(current)>512 or not isinstance(password,str) or not 8<=len(password)<=512:
+        return jsonify(error='Choisissez un mot de passe de 8 à 512 caractères.'),400
     if password!=confirmation:return jsonify(error='Les deux nouveaux mots de passe ne correspondent pas.'),400
     if password==current:return jsonify(error='Choisissez un mot de passe différent de l’ancien.'),400
     user=account();window=int(time.time())//600

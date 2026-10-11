@@ -74,12 +74,14 @@ class AdminTest(unittest.TestCase):
     def test_change_account_requires_current_password_and_invalidates_sessions(self):
         self.login()
         old_cookie=self.browser.get_cookie(admin.COOKIE).value
-        data={'current_password':'wrong','new_password':'new-private-password-123','confirmation':'new-private-password-123'}
+        data={'current_password':'wrong','new_password':'New-1234','confirmation':'New-1234'}
         self.assertEqual(self.browser.post('/api/admin/account',json=data,headers=self.headers).status_code,400)
         data['current_password']='long-test-password-123'
         self.assertEqual(self.browser.post('/api/admin/account',json=data,headers={'Origin':'http://localhost'}).status_code,403)
         data['confirmation']='different'
         self.assertEqual(self.browser.post('/api/admin/account',json=data,headers=self.headers).status_code,400)
+        short=dict(data,new_password='1234567',confirmation='1234567')
+        self.assertEqual(self.browser.post('/api/admin/account',json=short,headers=self.headers).status_code,400)
         data['confirmation']=data['new_password']
         self.assertEqual(self.browser.post('/api/admin/account',json=data,headers=self.headers).status_code,200)
         self.browser.set_cookie(admin.COOKIE,old_cookie)
@@ -91,7 +93,7 @@ class AdminTest(unittest.TestCase):
 
     def test_account_change_rate_limit(self):
         self.login()
-        data={'current_password':'wrong','new_password':'new-private-password-123','confirmation':'new-private-password-123'}
+        data={'current_password':'wrong','new_password':'New-1234','confirmation':'New-1234'}
         for _ in range(5):self.assertEqual(self.browser.post('/api/admin/account',json=data,headers=self.headers).status_code,400)
         self.assertEqual(self.browser.post('/api/admin/account',json=data,headers=self.headers).status_code,429)
 
