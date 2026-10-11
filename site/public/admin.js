@@ -27,3 +27,5 @@ el('account-form').onsubmit=async event=>{event.preventDefault();const button=ev
 
 
 el('manual-form').onsubmit=async event=>{event.preventDefault();const button=event.submitter;button.disabled=true;el('manual-message').textContent='Enregistrement…';try{const data=Object.fromEntries(new FormData(event.target));await api('reservations',data);event.target.reset();el('manual-message').textContent='Réservation confirmée sans paiement. La synchronisation avec l’agenda a été demandée.';await load();}catch(error){el('manual-message').textContent=error.message;}finally{button.disabled=false;}};
+
+el('manual-open').onclick=()=>{el('manual-panel').open=true;el('manual-panel').scrollIntoView({behavior:'smooth',block:'start'});el('manual-first_name').focus({preventScroll:true});};
