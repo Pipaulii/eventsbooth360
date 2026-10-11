@@ -188,6 +188,7 @@ def bookings():
             rows=db.execute("SELECT b.id,b.status,b.total,b.due,b.event_address,COALESCE(s.start,a.start,c.start),COALESCE(s.end,a.end,c.end),a.refund_status,a.refunded,a.calendar_done FROM bookings b LEFT JOIN slots s ON s.id=b.slot_id LEFT JOIN admin_cancellations a ON a.booking_id=b.id LEFT JOIN calendar_cancellations c ON c.booking_id=b.id WHERE b.status!='removed_test' ORDER BY b.created DESC LIMIT 200").fetchall()
             contacts={r[0]:r[1:] for r in db.execute('SELECT booking_id,first_name,last_name,phone FROM booking_contacts').fetchall()}
             themes={r[0]:r[1:] for r in db.execute('SELECT booking_id,event_type,video_name FROM booking_personalization').fetchall()}
+            trips={r[0]:{'fee_cents':r[1],'round_trip_km':r[2]} for r in db.execute('SELECT booking_id,fee,round_trip_km FROM booking_travel').fetchall()}
             gmail_mail.schema(db)
             notifications={}
             for bid,recipient,status in db.execute('SELECT booking_id,recipient,status FROM cancellation_mail').fetchall():
@@ -196,7 +197,8 @@ def bookings():
         items=[]
         for row in rows:
             item=dict(zip(keys,row));item.update(dict(zip(['first_name','last_name','phone'],contacts.get(row[0],('','','')))));item.update(dict(zip(['event_type','video_name'],themes.get(row[0],('','')))));items.append(item)
-        for item in items:item['emails']=notifications.get(item['id'],[])
+        for item in items:
+            item['emails']=notifications.get(item['id'],[]);item['travel']=trips.get(item['id'])
         return jsonify(bookings=items)
     except Exception:return jsonify(error='Réservations temporairement indisponibles.'),503
 @bp.post('/api/admin/cancel')

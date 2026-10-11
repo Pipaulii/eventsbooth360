@@ -229,6 +229,8 @@ def queue_reservation(db,bid):
     euros=lambda n:f'{n/100:.2f} €'.replace('.',',')
     when=datetime.fromisoformat(start).strftime('%d/%m/%Y à %H:%M')+' — '+datetime.fromisoformat(end).strftime('%d/%m/%Y à %H:%M')+' (heure de Paris)'
     body='\n'.join(['Nouvelle réservation confirmée'+(' — TEST SANS PAIEMENT' if total==0 and not bid.startswith('MANUEL-') else ' — SANS PAIEMENT EN LIGNE' if bid.startswith('MANUEL-') else ''),'','Référence : '+bid,'Nom : '+(last or 'Non renseigné'),'Prénom : '+(first or 'Non renseigné'),'Téléphone : '+(phone or 'Non renseigné'),'Adresse de livraison / événement : '+address,'Événement : '+(event or 'Non renseigné'),'Personnalisation vidéo : '+(theme or 'Non renseignée'),'Date et horaires : '+when,'Durée : '+str((datetime.fromisoformat(end)-datetime.fromisoformat(start)).total_seconds()/3600)+' h','Prix de la formule : '+euros(total),'Montant payé en ligne : '+euros(due),'Solde de la formule : '+euros(total-due),'','Consultez l’administration pour gérer cette réservation : https://eventsbooth360.fr/admin'])
+    trip=db.execute('SELECT fee,round_trip_km FROM booking_travel WHERE booking_id=?',(bid,)).fetchone()
+    if trip:body=body.replace('Prix de la formule :','Total avec déplacement :');body+='\nDéplacement : '+euros(trip[0])+' ('+trip[1]+' km aller-retour, 0,13 €/km hors Marseille). Prix de la prestation seule : '+euros(total-trip[0])
     db.execute("INSERT INTO reservation_mail(booking_id,recipient,subject,body,status) VALUES(?,?,?,?,'pending') ON CONFLICT(booking_id,recipient) DO NOTHING",(bid,OWNER,'Nouvelle réservation — EventsBooth360',body))
 
 def deliver_reservation(bid):

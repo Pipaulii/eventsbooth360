@@ -100,3 +100,11 @@ def privacy_page():return send_from_directory(ROOT/'public','confidentialite.htm
 
 @app.get('/conditions-utilisation')
 def terms_page():return send_from_directory(ROOT/'public','conditions-utilisation.html')
+
+@app.post('/api/travel-quote')
+def travel_quote():
+    import travel
+    origin=payments.config().get('SITE_URL','').rstrip('/')
+    if not origin or request.headers.get('Origin')!=origin:return jsonify(error='Origine refusée.'),403
+    try:return jsonify(travel.quote((request.get_json(silent=True) or {}).get('address')))
+    except travel.TravelError as e:return jsonify(error=str(e)),400

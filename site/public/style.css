@@ -16,3 +16,5 @@
 .seo-intro h1{font-size:clamp(32px,4.8vw,60px);letter-spacing:-1.5px;max-width:1000px}.seo-content{max-width:980px}.seo-content h2:not(:first-child){margin-top:38px}.seo-content p{color:#d1d2d7;line-height:1.8}.seo-links{border-top:1px solid #33363f}.seo-links ul{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 28px;list-style:none;padding:0}.seo-links a{color:var(--gold);text-decoration:underline;text-underline-offset:4px}@media(max-width:650px){.seo-links ul{grid-template-columns:1fr}}
 
 .hero h1{font-size:clamp(34px,4.1vw,56px);line-height:1.12;letter-spacing:-1.8px}.seo-content a{color:var(--gold);text-decoration:underline;text-underline-offset:4px}
+
+#travel-confirm{width:20px;min-height:20px;vertical-align:middle;margin-right:8px}#travel-calculate{margin-top:16px;width:100%;min-height:48px}#travel-message{overflow-wrap:anywhere}

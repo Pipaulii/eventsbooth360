@@ -161,7 +161,7 @@ def reconcile_deletions(connect, first_day, last_day):
             db.execute('DELETE FROM calendar_missing WHERE booking_id=?',(booking_id,))
     with _cache_lock:_cache.clear()
 
-def event_data(booking_id, begin, finish, address='', first_name='', last_name='', phone='', event_type='', video_name=''):
+def event_data(booking_id, begin, finish, address='', first_name='', last_name='', phone='', event_type='', video_name='', travel_fee=None, round_trip_km=None):
     from icalendar import Calendar, Event
     start = datetime.fromisoformat(begin).replace(tzinfo=PARIS)
     end = datetime.fromisoformat(finish).replace(tzinfo=PARIS)
@@ -184,6 +184,7 @@ def event_data(booking_id, begin, finish, address='', first_name='', last_name='
                          ('Événement', event_type), ('Filtres vidéo', video_name)):
         if value:
             details.append(label + ' : ' + value)
+    if travel_fee is not None:details.append(f'Déplacement : {travel_fee/100:.2f} EUR — {round_trip_km} km aller-retour')
     event.add('description', '\n'.join(details) +
               '\nSupprimer cet événement libère le créneau sur le site après vérification. Aucun remboursement automatique. Modifier ses horaires ne déplace pas la réservation du site.')
     event.add('status', 'CONFIRMED')
@@ -202,7 +203,7 @@ def export_pending(connect):
         schema(db)
         db.execute('BEGIN IMMEDIATE')
         db.execute("INSERT INTO calendar_exports(booking_id) SELECT id FROM bookings WHERE status='confirmed' ON CONFLICT(booking_id) DO NOTHING")
-        rows = db.execute("SELECT b.id,s.start,s.end,b.event_address,co.first_name,co.last_name,co.phone,p.event_type,p.video_name FROM bookings b JOIN slots s ON s.id=b.slot_id JOIN calendar_exports c ON c.booking_id=b.id LEFT JOIN booking_contacts co ON co.booking_id=b.id LEFT JOIN booking_personalization p ON p.booking_id=b.id WHERE b.status='confirmed' AND c.exported=0 ORDER BY b.created LIMIT 5").fetchall()
+        rows = db.execute("SELECT b.id,s.start,s.end,b.event_address,co.first_name,co.last_name,co.phone,p.event_type,p.video_name,t.fee,t.round_trip_km FROM bookings b JOIN slots s ON s.id=b.slot_id JOIN calendar_exports c ON c.booking_id=b.id LEFT JOIN booking_contacts co ON co.booking_id=b.id LEFT JOIN booking_personalization p ON p.booking_id=b.id LEFT JOIN booking_travel t ON t.booking_id=b.id WHERE b.status='confirmed' AND c.exported=0 ORDER BY b.created LIMIT 5").fetchall()
         if not rows:
             return
         with calendar_connection() as cal:

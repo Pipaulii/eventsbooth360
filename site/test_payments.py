@@ -3,16 +3,17 @@ from pathlib import Path
 from datetime import datetime,timedelta
 from types import SimpleNamespace
 sys.path.insert(0,str(Path('site').resolve()))
-import server,payments
+import server,payments,travel
 with tempfile.TemporaryDirectory() as folder:
  server.DATABASE=Path(folder)/'test.sqlite3'
- payments.config=lambda:{'STRIPE_SECRET_KEY':'sk_test_placeholder','STRIPE_WEBHOOK_SECRET':'whsec_test','SITE_URL':'http://127.0.0.1:3600'}
+ payments.config=lambda:{'STRIPE_SECRET_KEY':'sk_test_placeholder','STRIPE_WEBHOOK_SECRET':'whsec_test','SITE_URL':'http://127.0.0.1:3600','TRAVEL_QUOTE_SECRET':'unit-test-only-secret'}
  calls=[]
  def create(params,options):
   calls.append(params);return SimpleNamespace(id='cs_test_mock',url='https://checkout.stripe.com/c/test')
  payments.client=lambda:SimpleNamespace(v1=SimpleNamespace(checkout=SimpleNamespace(sessions=SimpleNamespace(create=create))))
  with server.connect() as db:db.execute("INSERT INTO settings VALUES('ready','true')")
  day=(datetime.now()+timedelta(days=3)).strftime('%Y-%m-%d');data={'duration':2,'payment_mode':'deposit','date':day,'time':'17:00','address':'10 rue Exemple, 13001 Marseille','first_name':'Marie','last_name':'Exemple','phone':'06 12 34 56 78','event_type':'Mariage','video_name':'Marie et Alex'}
+ data['travel_token']=travel.serializer().dumps({'address_hash':travel.digest(data['address']),'fee_cents':0,'round_trip_km':0,'label':data['address']})
  result=payments.checkout(data,server.connect,server.openings,server.setting)
  assert calls[0]['line_items'][0]['price_data']['unit_amount']==6870
  try:payments.checkout(data,server.connect,server.openings,server.setting);raise AssertionError('Double reservation acceptee')
