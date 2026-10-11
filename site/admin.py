@@ -92,6 +92,8 @@ def sync_calendar():
         with server.connect() as db:db.execute('UPDATE admin_cancellations SET calendar_done=1 WHERE booking_id=?',(bid,))
 
 def cancel(bid):
+    import gmail_mail
+    customer_email=None
     with server.connect() as db:
         payments.schema(db);schema(db);db.execute('BEGIN IMMEDIATE')
         row=db.execute('SELECT b.slot_id,b.due,b.status,b.session_id,s.start,s.end FROM bookings b LEFT JOIN slots s ON s.id=b.slot_id WHERE b.id=?',(bid,)).fetchone()
@@ -116,6 +118,8 @@ def cancel(bid):
         checkout=stripe.v1.checkout.sessions.retrieve(sid)
         if checkout.payment_status!='paid' or checkout.amount_total!=due or checkout.currency!='eur' or checkout.metadata.get('booking_id')!=bid:
             raise payments.PaymentError('Paiement Stripe incohérent : intervention nécessaire.')
+        details=getattr(checkout,'customer_details',None)
+        customer_email=(details.get('email') if isinstance(details,dict) else getattr(details,'email',None))
         intent=stripe.v1.payment_intents.retrieve(checkout.payment_intent,{'expand':['latest_charge']})
         charge=intent.latest_charge
         if not charge or isinstance(charge,str):raise payments.PaymentError('Paiement non vérifiable.')
@@ -131,6 +135,7 @@ def cancel(bid):
         db.execute('UPDATE admin_cancellations SET refund_id=?,refund_status=?,refunded=? WHERE booking_id=?',(refund_id,refund_status,amount,bid))
         if refund_status in ('succeeded','pending','no_payment','already_refunded'):
             db.execute("UPDATE bookings SET status='cancelled_admin' WHERE id=?",(bid,));db.execute('DELETE FROM slots WHERE id=?',(slot,))
+            gmail_mail.queue_cancellation(db,bid,customer_email)
     if refund_status not in ('succeeded','pending','no_payment','already_refunded'):
         raise payments.PaymentError('Remboursement à vérifier dans Stripe. Le créneau reste bloqué.')
 
@@ -145,6 +150,7 @@ def refresh_refunds():
 @bp.get('/api/admin/bookings')
 @protected
 def bookings():
+    import gmail_mail
     try:
         refresh_refunds();sync_calendar()
         with server.connect() as db:
@@ -152,10 +158,15 @@ def bookings():
             rows=db.execute('SELECT b.id,b.status,b.total,b.due,b.event_address,COALESCE(s.start,a.start,c.start),COALESCE(s.end,a.end,c.end),a.refund_status,a.refunded,a.calendar_done FROM bookings b LEFT JOIN slots s ON s.id=b.slot_id LEFT JOIN admin_cancellations a ON a.booking_id=b.id LEFT JOIN calendar_cancellations c ON c.booking_id=b.id ORDER BY b.created DESC LIMIT 200').fetchall()
             contacts={r[0]:r[1:] for r in db.execute('SELECT booking_id,first_name,last_name,phone FROM booking_contacts').fetchall()}
             themes={r[0]:r[1:] for r in db.execute('SELECT booking_id,event_type,video_name FROM booking_personalization').fetchall()}
+            gmail_mail.schema(db)
+            notifications={}
+            for bid,recipient,status in db.execute('SELECT booking_id,recipient,status FROM cancellation_mail').fetchall():
+                notifications.setdefault(bid,[]).append({'recipient':recipient,'status':status})
         keys=['id','status','total','due','address','start','end','refund_status','refunded','calendar_done']
         items=[]
         for row in rows:
             item=dict(zip(keys,row));item.update(dict(zip(['first_name','last_name','phone'],contacts.get(row[0],('','','')))));item.update(dict(zip(['event_type','video_name'],themes.get(row[0],('','')))));items.append(item)
+        for item in items:item['emails']=notifications.get(item['id'],[])
         return jsonify(bookings=items)
     except Exception:return jsonify(error='Réservations temporairement indisponibles.'),503
 @bp.post('/api/admin/cancel')
@@ -164,7 +175,11 @@ def cancellation():
     data=request.get_json(silent=True) or {};bid=data.get('booking_id')
     if not isinstance(bid,str) or len(bid)>100 or data.get('confirm') is not True:return jsonify(error='Confirmez l’annulation et le remboursement.'),400
     try:
-        cancel(bid);sync_calendar();return jsonify(ok=True)
+        cancel(bid);sync_calendar()
+        import gmail_mail
+        try:gmail_mail.deliver(bid)
+        except Exception:pass
+        return jsonify(ok=True)
     except payments.PaymentError as e:return jsonify(error=str(e)),400
     except Exception:return jsonify(error='Stripe indisponible ou autorisation manquante. Réessayez avec ce même bouton ; vérifiez Stripe si le problème persiste.'),503
 

@@ -7,10 +7,12 @@ import payments,server,apple_calendar
 import admin
 import seo
 import visits
+import gmail_mail
 ROOT=Path(__file__).resolve().parent
 app=Flask(__name__,static_folder=str(ROOT/'public'),static_url_path='/assets')
 app.config['MAX_CONTENT_LENGTH']=65536
 app.register_blueprint(admin.bp)
+app.register_blueprint(gmail_mail.bp)
 app.register_blueprint(seo.bp)
 @app.after_request
 def security(response):
