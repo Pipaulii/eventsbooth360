@@ -13,3 +13,5 @@ main{max-width:1280px;padding:22px 40px 56px}header{padding-bottom:22px;border-b
 
 /* Keep native dropdown choices readable against the light form fields. */
 select{color-scheme:light}select option,select optgroup{background:#fff;color:#171a20}
+
+#quote-form select,#quote-form textarea{display:block;width:100%;min-height:48px;padding:12px;font:inherit;border:1px solid #cdd0d5;border-radius:8px;background:#fff;color:#171a20;box-sizing:border-box}#quote-form textarea{resize:vertical}#quote-form input{min-width:0}#quote-summary,#quote-notice{overflow-wrap:anywhere}#quote-list a{color:#edc87f}#quote-list button{display:block;margin-top:12px}

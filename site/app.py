@@ -8,6 +8,7 @@ import admin
 import seo
 import visits
 import gmail_mail
+import quotes
 ROOT=Path(__file__).resolve().parent
 app=Flask(__name__,static_folder=str(ROOT/'public'),static_url_path='/assets')
 app.config['MAX_CONTENT_LENGTH']=65536
