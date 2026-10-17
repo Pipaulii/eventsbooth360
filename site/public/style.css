@@ -28,3 +28,5 @@ select{color-scheme:light}select option,select optgroup{background:#fff;color:#1
 
 /* Align the booking container with the package cards. */
 .availability{margin:0 40px 56px;padding:28px;border:1px solid #33363f;border-radius:14px}.booking-step{border-radius:14px}.booking-progress button{border-radius:9px}@media(max-width:650px){.availability{margin:0 20px 34px;padding:18px}.booking-step{padding:18px}.flow-controls{flex-wrap:wrap}.flow-controls .button{flex:1;min-width:0}}
+
+.area{margin:0 40px;border:1px solid #33363f;border-radius:14px;padding:40px 28px}@media(max-width:650px){.area{margin:0 20px;padding:28px 18px}}
