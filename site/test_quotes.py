@@ -13,11 +13,11 @@ class QuoteTest(unittest.TestCase):
         r=self.client.post('/api/admin/login',json={'email':'owner@example.com','password':'test-password-long'},headers=self.headers)
         self.headers['X-CSRF-Token']=r.json['csrf']
         self.data=dict(request_key='test-request-123456789',name='Camille Exemple',email='client@example.com',phone='0600000000',address='10 rue Exemple, 13500 Martigues',event='Anniversaire',notes='Installation et animation incluses.',date='2099-11-24',time='18:00',hours='6',discount='10',travel_token='mock')
-        self.trip=patch.object(travel,'verify',return_value=dict(fee_cents=1062,round_trip_km=81.7,label='10 rue Exemple, 13500 Martigues'));self.trip.start()
+        self.trip=patch.object(travel,'verify',return_value=dict(fee_cents=1471,round_trip_km=81.7,label='10 rue Exemple, 13500 Martigues'));self.trip.start()
     def tearDown(self):self.trip.stop();self.config.stop();server.DATABASE=self.old;self.tmp.cleanup()
     def test_pricing(self):
         for h,total in [(2,22900),(3,29900),(4,35900),(6,53850),(8,71800)]:self.assertEqual(quotes.amounts(h,0,0)['total'],total)
-        a=quotes.amounts(6,10,1062);self.assertEqual(a['total'],49527);self.assertEqual(a['deposit']+a['balance'],a['total'])
+        a=quotes.amounts(6,10,1471);self.assertEqual(a['total'],49936);self.assertEqual(a['deposit']+a['balance'],a['total'])
         for h,d in [('NaN',0),(2.5,0),(25,0),(6,-10),(6,'Infinity')]:
             with self.assertRaises(ValueError):quotes.amounts(h,d,0)
     def test_create_duplicate_and_no_calendar(self):

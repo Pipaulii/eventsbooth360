@@ -12,7 +12,7 @@ class TravelError(Exception):pass
 def serializer():
     c=payments.config();key=c.get('TRAVEL_QUOTE_SECRET') or c.get('ADMIN_PASSWORD')
     if not key:raise TravelError('Calcul des déplacements temporairement indisponible.')
-    return URLSafeTimedSerializer(key,salt='eventsbooth-travel-v1')
+    return URLSafeTimedSerializer(key,salt='eventsbooth-travel-v2')
 
 def digest(address):return hashlib.sha256(address.strip().casefold().encode()).hexdigest()
 
@@ -45,8 +45,8 @@ def quote(address):
                     distance=Decimal(str(route['distance']))
                     if not distance.is_finite() or distance<=0:raise ValueError()
                     meters+=distance
-            fee=int((Decimal(meters)*Decimal('0.013')).quantize(Decimal('1'),rounding=ROUND_HALF_UP))
-            data={'address_hash':key,'label':p['label'],'fee_cents':fee,'round_trip_km':float((Decimal(meters)/1000).quantize(Decimal('.1'))),'included':local,'rate_cents_per_km':13}
+            fee=int((Decimal(meters)*Decimal('0.018')).quantize(Decimal('1'),rounding=ROUND_HALF_UP))
+            data={'address_hash':key,'label':p['label'],'fee_cents':fee,'round_trip_km':float((Decimal(meters)/1000).quantize(Decimal('.1'))),'included':local,'rate_cents_per_km':18}
             with _lock:
                 if len(_cache)>500:_cache.clear()
                 _cache[key]=(time.monotonic()+1800,data)

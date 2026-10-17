@@ -19,9 +19,9 @@ class TravelTest(unittest.TestCase):
         address='10 rue Exemple 13400 Aubagne'
         with patch.object(travel,'fetch',side_effect=[self.feature(),{'distance':30000},{'distance':32000}]) as fetch:
             q=travel.quote(address);again=travel.quote(address)
-        self.assertEqual(q['fee_cents'],806);self.assertEqual(q['round_trip_km'],62)
+        self.assertEqual(q['fee_cents'],1116);self.assertEqual(q['round_trip_km'],62)
         self.assertEqual(fetch.call_count,3)
-        self.assertEqual(travel.verify(q['token'],address)['fee_cents'],806)
+        self.assertEqual(travel.verify(q['token'],address)['fee_cents'],1116)
         for token,other in [(q['token']+'x',address),(q['token'],'20 rue Exemple 13400 Aubagne'),(None,address)]:
             with self.assertRaises(travel.TravelError):travel.verify(token,other)
     def test_unavailable_or_imprecise_never_free(self):
@@ -34,6 +34,12 @@ class TravelTest(unittest.TestCase):
         with patch.object(travel,'fetch',return_value=self.feature('13213','13013')):
             with self.assertRaises(travel.TravelError):travel.quote('10 rue Exemple 13400 Aubagne')
 
+    def test_previous_rate_requires_recalculation(self):
+        from itsdangerous import URLSafeTimedSerializer
+        address='10 rue Exemple 13400 Aubagne'
+        old=URLSafeTimedSerializer('unit-test-secret',salt='eventsbooth-travel-v1').dumps({'address_hash':travel.digest(address),'fee_cents':806})
+        with self.assertRaises(travel.TravelError):travel.verify(old,address)
+
     def test_checkout_charges_signed_total_and_rejects_tampering(self):
         import tempfile
         from pathlib import Path
@@ -44,7 +50,7 @@ class TravelTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder,patch.object(server,'DATABASE',Path(folder)/'checkout.db'),patch.object(payments,'config',return_value=config):
             address='10 rue Exemple 13400 Aubagne'
             data=dict(duration=2,payment_mode='deposit',date=(datetime.now()+timedelta(days=3)).strftime('%Y-%m-%d'),time='18:00',address=address,first_name='Camille',last_name='Exemple',phone='0600000000',event_type='Autre',video_name='')
-            data['travel_token']=travel.serializer().dumps({'address_hash':travel.digest(address),'fee_cents':806,'round_trip_km':62,'label':address})
+            data['travel_token']=travel.serializer().dumps({'address_hash':travel.digest(address),'fee_cents':1116,'round_trip_km':62,'label':address})
             data['fee_cents']=0
             with server.connect() as db:db.execute("INSERT INTO settings VALUES('ready','true')")
             with patch.object(apple_calendar,'busy',return_value=[]),patch.object(apple_calendar,'enabled',return_value=False),patch.object(payments,'client') as client:
@@ -53,9 +59,9 @@ class TravelTest(unittest.TestCase):
                 data['travel_token']+='x'
                 with self.assertRaises(payments.PaymentError):payments.checkout(data,server.connect,server.openings,server.setting)
             with server.connect() as db:
-                self.assertEqual(db.execute('SELECT total,due FROM bookings').fetchone(),(23706,7112))
-                self.assertEqual(db.execute('SELECT fee FROM booking_travel').fetchone()[0],806)
+                self.assertEqual(db.execute('SELECT total,due FROM bookings').fetchone(),(24016,7205))
+                self.assertEqual(db.execute('SELECT fee FROM booking_travel').fetchone()[0],1116)
     def check_amount(self,params):
         from types import SimpleNamespace as NS
-        self.assertEqual(params['line_items'][0]['price_data']['unit_amount'],7112)
+        self.assertEqual(params['line_items'][0]['price_data']['unit_amount'],7205)
         return NS(id='cs_unit_test',url='https://checkout.stripe.com/test')

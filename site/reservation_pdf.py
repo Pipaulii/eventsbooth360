@@ -25,7 +25,7 @@ def render(number,data):
     table=Table([[text(k),text(v)] for k,v in amounts],colWidths=[355,156])
     table.setStyle(TableStyle([('BACKGROUND',(0,2),(-1,2),colors.HexColor('#ffe2a4')),('BOTTOMPADDING',(0,0),(-1,-1),6),('TOPPADDING',(0,0),(-1,-1),6),('LINEBELOW',(0,1),(-1,1),.5,colors.HexColor('#edc87f'))]))
     story+=[KeepTogether([text('Détail des montants','Heading2'),table]),Spacer(1,8)]
-    if data['travel_km'] is not None:story.append(text('Déplacement inclus dans Marseille. Hors Marseille : 0,13 EUR/km routier aller-retour. Distance retenue : '+str(data['travel_km'])+' km.','SmallPrint'))
+    if data['travel_km'] is not None:story.append(text('Déplacement inclus dans Marseille. Hors Marseille : 0,18 EUR/km routier aller-retour. Distance retenue : '+str(data['travel_km'])+' km.','SmallPrint'))
     story+=[Spacer(1,14),text('Votre réservation est confirmée. Pour toute modification, contactez-nous avec votre référence.','SmallPrint'),text('eventsbooth360.fr — eventsbooth360@gmail.com — 06 11 57 46 64','SmallPrint')]
     def footer(canvas,doc):
         canvas.setFont('Helvetica',8);canvas.setFillColor(colors.HexColor('#59616c'));canvas.drawString(42,24,'Récapitulatif de réservation — ne constitue pas une facture.');canvas.drawRightString(553,24,str(doc.page))
