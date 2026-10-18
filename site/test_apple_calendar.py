@@ -63,7 +63,7 @@ class CalendarTests(unittest.TestCase):
         content=Calendar.from_ical(apple.event_data('test-contact','2026-12-10T17:00:00','2026-12-10T19:00:00',
             '12 rue Exemple, Marseille','Marie','Exemple','06 12 34 56 78','Mariage','Marie et Alex'))
         event=content.walk('VEVENT')[0]
-        self.assertEqual(str(event['summary']),'EventsBooth360 — Marie Exemple — 2 h')
+        self.assertEqual(str(event['summary']),'EventsBooth360 - Marie Exemple - 2 h')
         self.assertEqual(str(event['location']),'12 rue Exemple, Marseille')
         self.assertIn('Téléphone : 06 12 34 56 78',str(event['description']))
         self.assertIn('Événement : Mariage',str(event['description']))

@@ -127,14 +127,14 @@ def compose(recipient, subject, body, attachment=None):
     message['Subject'] = subject
     message['Reply-To'] = OWNER
     # Remove the older plain footer when processing an already queued message.
-    old_footer = '\nEventsBooth360 — 06 11 57 46 64\nhttps://eventsbooth360.fr'
+    old_footer = '\nEventsBooth360 - 06 11 57 46 64\nhttps://eventsbooth360.fr'
     body = body.replace(old_footer, '').rstrip()
     message.set_content(body + '\n\nEventsBooth360\nL’expérience vidéo à 360°\n06 11 57 46 64\neventsbooth360@gmail.com\nhttps://eventsbooth360.fr\n')
     content = escape(body).replace('\n', '<br>')
     message.add_alternative('<!doctype html><html lang="fr"><body style="margin:0;padding:24px;background:#fff;color:#171a20;font:15px/1.6 Arial,sans-serif">'
         '<div>' + content + '</div>'
         '<table role="presentation" cellspacing="0" cellpadding="0" style="margin-top:28px;border-top:1px solid #edc87f;padding-top:18px"><tr><td>'
-        '<img src="cid:eventsbooth360-signature" width="360" height="84" alt="EventsBooth360 — L’expérience vidéo à 360°" style="display:block;width:360px;max-width:100%;height:auto;border:0">'
+        '<img src="cid:eventsbooth360-signature" width="360" height="84" alt="EventsBooth360 - L’expérience vidéo à 360°" style="display:block;width:360px;max-width:100%;height:auto;border:0">'
         '</td></tr><tr><td style="padding-top:12px;font:14px/1.7 Arial,sans-serif;color:#171a20">'
         '<a href="tel:+33611574664" style="color:#171a20;text-decoration:none">06 11 57 46 64</a><br>'
         '<a href="mailto:eventsbooth360@gmail.com" style="color:#171a20">eventsbooth360@gmail.com</a><br>'
@@ -157,7 +157,7 @@ def send(recipient, subject, body, token, attachment=None):
 @admin.protected
 def test():
     try:
-        send(OWNER, 'EventsBooth360 — test des mails du site', 'La connexion Gmail du site fonctionne. Ce message de test ne correspond à aucune réservation et ne déclenche aucun paiement ni remboursement.', access_token())
+        send(OWNER, 'EventsBooth360 - test des mails du site', 'La connexion Gmail du site fonctionne. Ce message de test ne correspond à aucune réservation et ne déclenche aucun paiement ni remboursement.', access_token())
         return jsonify(ok=True)
     except Exception: return jsonify(error='Envoi non confirmé. Vérifiez Gmail avant de réessayer ou reconnectez le compte.'), 503
 
@@ -181,7 +181,7 @@ def queue_cancellation(db, bid, customer_email=None):
     if not row: return
     address,total,due,start,end,refund,amount,first,last,phone,event,theme = row
     euros = lambda n: f'{n / 100:.2f} €'.replace('.', ',')
-    when = datetime.fromisoformat(start).strftime('%d/%m/%Y à %H:%M') + ' — ' + datetime.fromisoformat(end).strftime('%d/%m/%Y à %H:%M') + ' (heure de Paris)'
+    when = datetime.fromisoformat(start).strftime('%d/%m/%Y à %H:%M') + ' - ' + datetime.fromisoformat(end).strftime('%d/%m/%Y à %H:%M') + ' (heure de Paris)'
     refund_text = {
         'succeeded': 'Remboursement effectué via Stripe : ' + euros(amount) + '. Le délai de réception dépend de votre banque.',
         'pending': 'Remboursement demandé via Stripe : ' + euros(amount) + '. Il est encore en cours de traitement.',
@@ -194,13 +194,13 @@ def queue_cancellation(db, bid, customer_email=None):
         'Lieu de livraison / événement : ' + address, 'Personnalisation vidéo : ' + (theme or 'Non renseignée'),
         'Prix de la formule : ' + euros(total), 'Montant payé en ligne : ' + euros(due), '', refund_text,
         '', 'Les éventuels paiements effectués séparément sont à vérifier directement avec EventsBooth360.',
-        '', 'Pour toute question, répondez à ce message.', 'EventsBooth360 — 06 11 57 46 64', 'https://eventsbooth360.fr'])
+        '', 'Pour toute question, répondez à ce message.', 'EventsBooth360 - 06 11 57 46 64', 'https://eventsbooth360.fr'])
     recipients = {OWNER}
     if valid_email(customer_email): recipients.add(customer_email)
     for recipient in recipients:
         body = details
         if recipient == OWNER and not valid_email(customer_email): body += '\n\nAttention : adresse e-mail client indisponible ; aucun mail n’a pu être préparé pour le client.'
-        db.execute("INSERT INTO cancellation_mail(booking_id,recipient,subject,body,status) VALUES(?,?,?,?,'pending') ON CONFLICT(booking_id,recipient) DO NOTHING", (bid,recipient,'Annulation de votre réservation — EventsBooth360',body))
+        db.execute("INSERT INTO cancellation_mail(booking_id,recipient,subject,body,status) VALUES(?,?,?,?,'pending') ON CONFLICT(booking_id,recipient) DO NOTHING", (bid,recipient,'Annulation de votre réservation - EventsBooth360',body))
 
 def deliver(bid):
     """Never retries an ambiguous send: sending/unknown require a mailbox check."""
@@ -229,11 +229,11 @@ def queue_reservation(db,bid,customer_email=None):
     if not row:return
     address,total,due,start,end,first,last,phone,event,theme=row
     euros=lambda n:f'{n/100:.2f} €'.replace('.',',')
-    when=datetime.fromisoformat(start).strftime('%d/%m/%Y à %H:%M')+' — '+datetime.fromisoformat(end).strftime('%d/%m/%Y à %H:%M')+' (heure de Paris)'
-    body='\n'.join(['Nouvelle réservation confirmée'+(' — TEST SANS PAIEMENT' if total==0 and not bid.startswith('MANUEL-') else ' — SANS PAIEMENT EN LIGNE' if bid.startswith('MANUEL-') else ''),'','Référence : '+bid,'Nom : '+(last or 'Non renseigné'),'Prénom : '+(first or 'Non renseigné'),'Téléphone : '+(phone or 'Non renseigné'),'Adresse de livraison / événement : '+address,'Événement : '+(event or 'Non renseigné'),'Personnalisation vidéo : '+(theme or 'Non renseignée'),'Date et horaires : '+when,'Durée : '+str((datetime.fromisoformat(end)-datetime.fromisoformat(start)).total_seconds()/3600)+' h','Prix de la formule : '+euros(total),'Montant payé en ligne : '+euros(due),'Solde de la formule : '+euros(total-due),'','Consultez l’administration pour gérer cette réservation : https://eventsbooth360.fr/admin'])
+    when=datetime.fromisoformat(start).strftime('%d/%m/%Y à %H:%M')+' - '+datetime.fromisoformat(end).strftime('%d/%m/%Y à %H:%M')+' (heure de Paris)'
+    body='\n'.join(['Nouvelle réservation confirmée'+(' - TEST SANS PAIEMENT' if total==0 and not bid.startswith('MANUEL-') else ' - SANS PAIEMENT EN LIGNE' if bid.startswith('MANUEL-') else ''),'','Référence : '+bid,'Nom : '+(last or 'Non renseigné'),'Prénom : '+(first or 'Non renseigné'),'Téléphone : '+(phone or 'Non renseigné'),'Adresse de livraison / événement : '+address,'Événement : '+(event or 'Non renseigné'),'Personnalisation vidéo : '+(theme or 'Non renseignée'),'Date et horaires : '+when,'Durée : '+str((datetime.fromisoformat(end)-datetime.fromisoformat(start)).total_seconds()/3600)+' h','Prix de la formule : '+euros(total),'Montant payé en ligne : '+euros(due),'Solde de la formule : '+euros(total-due),'','Consultez l’administration pour gérer cette réservation : https://eventsbooth360.fr/admin'])
     trip=db.execute('SELECT fee,round_trip_km FROM booking_travel WHERE booking_id=?',(bid,)).fetchone()
     if trip:body=body.replace('Prix de la formule :','Total avec déplacement :');body+='\nDéplacement : '+euros(trip[0])+' ('+trip[1]+' km aller-retour, 0,18 €/km hors Marseille). Prix de la prestation seule : '+euros(total-trip[0])
-    db.execute("INSERT INTO reservation_mail(booking_id,recipient,subject,body,status) VALUES(?,?,?,?,'pending') ON CONFLICT(booking_id,recipient) DO NOTHING",(bid,OWNER,'Nouvelle réservation — EventsBooth360',body))
+    db.execute("INSERT INTO reservation_mail(booking_id,recipient,subject,body,status) VALUES(?,?,?,?,'pending') ON CONFLICT(booking_id,recipient) DO NOTHING",(bid,OWNER,'Nouvelle réservation - EventsBooth360',body))
     if valid_email(customer_email):
         existing=db.execute('SELECT number FROM reservation_documents WHERE booking_id=?',(bid,)).fetchone()
         if existing:return
@@ -243,7 +243,7 @@ def queue_reservation(db,bid,customer_email=None):
         pdf=reservation_pdf.render(number,details)
         db.execute('INSERT INTO reservation_documents VALUES(?,?,?,?)',(bid,number,base64.b64encode(pdf).decode(),customer_email))
         if customer_email!=OWNER:
-            db.execute("INSERT INTO reservation_mail(booking_id,recipient,subject,body,status) VALUES(?,?,?,?,'pending') ON CONFLICT(booking_id,recipient) DO NOTHING",(bid,customer_email,'Votre réservation EventsBooth360 — récapitulatif n° '+str(number),'Bonjour '+(first or '')+',\n\nVotre réservation est confirmée. Vous trouverez en pièce jointe le récapitulatif détaillé n° '+str(number)+'.\n\nRéférence : '+bid+'\nPour toute question ou modification, répondez à ce mail.'))
+            db.execute("INSERT INTO reservation_mail(booking_id,recipient,subject,body,status) VALUES(?,?,?,?,'pending') ON CONFLICT(booking_id,recipient) DO NOTHING",(bid,customer_email,'Votre réservation EventsBooth360 - récapitulatif n° '+str(number),'Bonjour '+(first or '')+',\n\nVotre réservation est confirmée. Vous trouverez en pièce jointe le récapitulatif détaillé n° '+str(number)+'.\n\nRéférence : '+bid+'\nPour toute question ou modification, répondez à ce mail.'))
 
 
 def deliver_reservation(bid):

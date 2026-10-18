@@ -176,7 +176,7 @@ def event_data(booking_id, begin, finish, address='', first_name='', last_name='
     event.add('dtstart', start.astimezone(timezone.utc))
     event.add('dtend', end.astimezone(timezone.utc))
     name = ' '.join(part.strip() for part in (first_name or '', last_name or '') if part.strip())
-    event.add('summary', f'EventsBooth360 — {name or "location confirmée"} — {hours} h')
+    event.add('summary', f'EventsBooth360 - {name or "location confirmée"} - {hours} h')
     if address:
         event.add('location', address)
     details = ['Réservation ' + booking_id]
@@ -184,7 +184,7 @@ def event_data(booking_id, begin, finish, address='', first_name='', last_name='
                          ('Événement', event_type), ('Filtres vidéo', video_name)):
         if value:
             details.append(label + ' : ' + value)
-    if travel_fee is not None:details.append(f'Déplacement : {travel_fee/100:.2f} EUR — {round_trip_km} km aller-retour')
+    if travel_fee is not None:details.append(f'Déplacement : {travel_fee/100:.2f} EUR - {round_trip_km} km aller-retour')
     event.add('description', '\n'.join(details) +
               '\nSupprimer cet événement libère le créneau sur le site après vérification. Aucun remboursement automatique. Modifier ses horaires ne déplace pas la réservation du site.')
     event.add('status', 'CONFIRMED')
