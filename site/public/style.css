@@ -60,3 +60,18 @@ body{background:radial-gradient(ellipse at 12% 4%,#76225845,transparent 38%),rad
 .day.selected{background:#792362;border-color:#792362;color:#fff}.slot-list button[aria-pressed="true"]{background:#792362;border-color:#792362;color:#fff}.booking-progress button[aria-current=step]{background:#f4b6e1;color:#351333}.booking-progress button{color:#ffc5e8}.booking-progress button:disabled{opacity:1;color:#8a738f;border-color:#55365b}
 #travel-calculate{background:#792362;color:#fff;border-color:#792362}.booking-step input[type=checkbox]{accent-color:#a92e83}.payment-summary dd,.payment-summary strong{color:#792362}.booking-step .flow-feedback{color:#792362}.selection .eyebrow{color:#9e2375}
 .area{background:linear-gradient(120deg,#3c2046,#24142f)}.contact-card{box-shadow:0 8px 32px #7b286314}nav a:hover{color:#ffc5e8}
+
+/* Pastel marble theme. */
+:root{color-scheme:light;--bg:#fcf9fb;--gold:#985473;--muted:#756675;--card-border:#e5d5df}
+body{background:#fcf9fb url('marbre-pastel.png') center top/1300px auto repeat;color:#332c3b}
+header,footer,.faq,.seo-links,.real-installation{border-color:#e5d5df}header{background:#fff9}
+.brand,.brand span{color:#875174}.brand small{color:#756675}.hero h1 span{color:#a75a80}.hero .eyebrow,.eyebrow{color:#93587c}.lead,.subtle,.steps p,.packages article>p:not(.eyebrow):not(.price),.section-title>p,.faq details p,.seo-content p,.contact-card p,.real-installation p:not(.eyebrow){color:#6f6271}
+.button:not(.outline){background:linear-gradient(115deg,#f3c5d8,#d6c7ee);color:#463147;box-shadow:0 5px 16px #98648214}.outline{color:#8c5375;border-color:#c39bb4;background:#ffffff80}.hero-actions .outline{color:#8c5375}
+.packages article,.steps article,.faq details,.seo-links a,main>.contact-card{background:#ffffffcf;border-color:#e4d2df;box-shadow:0 6px 22px #8a64800a}.packages .featured{background:linear-gradient(140deg,#fae9f0ed,#eee6f8ed);border-color:#c59bb9;box-shadow:0 8px 24px #98648212}.price,.steps b{color:#a05c81}
+main>.availability,.availability{background:#f7f0f8e8;border-color:#e1d1e2}.notice{background:#ffffffa6;color:#795a77;border-color:#d8bfd3}.calendar,.selection,.booking-step{background:#fffdfef2;color:#332c3b;border-color:#e3d4e0}.booking-step .calendar,.booking-step .selection{background:transparent}
+.booking-progress button{background:#ffffffb3;color:#71566f;border-color:#ddccdc}.booking-progress button[aria-current=step]{background:#eacadd;color:#493149;border-color:#c9a3bf}.booking-progress button:disabled{background:#f6f1f7;color:#978698;border-color:#e3d7e4}
+.day.selected{background:#b980a5;border-color:#a36c91;color:#fff}.slot-list button[aria-pressed="true"]{background:#e8d1e4;color:#493149;border-color:#b68baa}#travel-calculate{background:linear-gradient(115deg,#f3c5d8,#d6c7ee);color:#493149;border-color:#cfacc6}.flow-feedback{color:#895171}
+.area{background:linear-gradient(120deg,#f8e9f1e8,#eee9f8e8);border-color:#dfccdd}.contact-options p a,.seo-links a,.seo-content a,.faq>.subtle a{color:#8b5276}.demo-video{background:#f1e8f2;border-color:#d5b8d0;box-shadow:0 8px 30px #98648216}.demo-video video{background:#eee6ef}.demo-video button{background:#fffdf4;color:#694562;border-color:#cba8c1}.payment-summary dd,.payment-summary strong,.selection .eyebrow{color:#93587c}nav a:hover{color:#9e5b83}
+
+/* Complete the light palette on the installation panel. */
+main>.real-installation{background:linear-gradient(120deg,#fffafcea,#f1eaf7ed);border:1px solid #e0cedf;box-shadow:0 6px 24px #9864820d}.real-installation h2{color:#332c3b}.real-installation img{background:#ede5ef}.real-installation .eyebrow{color:#93587c}.real-installation p:not(.eyebrow){color:#6f6271}.real-installation .outline{background:#ffffffb3;color:#80516f;border-color:#b893ad}
