@@ -88,3 +88,17 @@ body{background:#fcfafc;color:#332c3b}header{background:#ffffffc9;border-bottom:
 main>.contact-card{background:#fcf2f7}
 main>.contact-card:before{background:linear-gradient(90deg,#fff9fcc9,#fff4fa70),url('marbre-pastel.png') center/950px auto;opacity:1}
 @media(max-width:700px){.hero:before{background-size:auto,750px auto}.hero{border-radius:14px}}
+
+/* Consistent outer frames, card geometry and aligned package content. */
+main>.hero{margin:24px var(--page-gutter) 0;padding:28px;border:1px solid var(--card-border);border-radius:var(--card-radius);gap:32px;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.hero .intro{min-width:0}.hero .lead{max-width:none}
+.demo-video{border-radius:var(--card-radius)}
+.packages,.steps{align-items:stretch;grid-auto-rows:auto}
+.packages article:not(.full-day)>p:not(.eyebrow):not(.price){min-height:3.2em}
+.packages article:not(.full-day) .price{margin-top:auto;margin-bottom:20px}
+.packages article:not(.full-day) .button{margin-top:0}
+.button{border:1px solid transparent;min-height:54px;line-height:1.4;border-radius:var(--control-radius)}
+.button.outline{border-color:#bc91ad}
+.packages article,.steps article,.faq details,.seo-links a,main>.availability,main>.area,main>.real-installation,main>.contact-card{border-radius:var(--card-radius)}
+@media(max-width:1000px){main>.hero{gap:24px;padding:24px}}
+@media(max-width:650px){main>.hero{margin-top:20px;padding:18px;grid-template-columns:1fr;gap:22px}.packages article:not(.full-day)>p:not(.eyebrow):not(.price){min-height:0}.hero h1{font-size:clamp(30px,8vw,42px);letter-spacing:-1px}.button{min-height:50px}.demo-video video{height:360px}}
