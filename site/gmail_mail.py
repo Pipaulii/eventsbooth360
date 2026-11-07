@@ -144,7 +144,7 @@ def compose(recipient, subject, body, attachment=None):
         '<table role="presentation" cellspacing="0" cellpadding="0" style="margin-top:28px;border-top:1px solid #dbbad1;padding-top:18px"><tr><td>'
         '<img src="cid:eventsbooth360-signature" width="360" height="84" alt="EventsBooth360 - L’expérience vidéo à 360°" style="display:block;width:360px;max-width:100%;height:auto;border:0">'
         '</td></tr><tr><td style="padding-top:12px;font:14px/1.7 Arial,sans-serif;color:#171a20">'
-        '<a href="tel:+33611574664" style="color:#171a20;text-decoration:none">06 11 57 46 64</a><br>'
+        '<span>06 11 57 46 64</span><br>'
         '<a href="mailto:' + escape(reply, quote=True) + '" style="color:#875174">' + escape(reply) + '</a><br>'
         '<a href="https://eventsbooth360.fr" style="color:#875174">eventsbooth360.fr</a>'
         '</td></tr></table></body></html>', subtype='html')
