@@ -17,6 +17,7 @@ from flask import Blueprint, jsonify, redirect, request
 import payments
 import server
 import admin
+import mail_transport
 
 bp = Blueprint('gmail_mail', __name__)
 OWNER = 'eventsbooth360@gmail.com'
@@ -32,6 +33,7 @@ def schema(db):
     db.execute('CREATE TABLE IF NOT EXISTS reservation_documents(booking_id TEXT PRIMARY KEY,number INTEGER UNIQUE NOT NULL,pdf TEXT NOT NULL,recipient TEXT NOT NULL)')
 
 def configured():
+    if mail_transport.enabled(): return mail_transport.configured()
     c = payments.config()
     return bool(c.get('GMAIL_CLIENT_ID') and c.get('GMAIL_CLIENT_SECRET'))
 
@@ -51,6 +53,7 @@ def token_request(values):
         return json.load(response)
 
 def connected():
+    if mail_transport.enabled(): return mail_transport.configured()
     if not configured(): return False
     with server.connect() as db:
         schema(db)
@@ -62,11 +65,12 @@ def connected():
 @bp.get('/api/admin/gmail/status')
 @admin.protected
 def status():
-    return jsonify(configured=configured(), connected=connected(), sender=OWNER)
+    return jsonify(configured=configured(), connected=connected(), provider='resend' if mail_transport.enabled() else 'gmail', sender=mail_transport.sender(OWNER, OWNER) if mail_transport.enabled() else OWNER, reply_to=mail_transport.reply_to() if mail_transport.enabled() else OWNER)
 
 @bp.post('/api/admin/gmail/connect')
 @admin.protected
 def connect():
+    if mail_transport.enabled(): return jsonify(error='Les e-mails sont envoyés par Resend. Aucune connexion Gmail requise.'), 409
     if not configured(): return jsonify(error='Ajoutez GMAIL_CLIENT_ID et GMAIL_CLIENT_SECRET dans Render.'), 503
     state = secrets.token_urlsafe(32)
     verifier = secrets.token_urlsafe(48)
@@ -113,6 +117,9 @@ def callback():
     return response
 
 def access_token():
+    if mail_transport.enabled():
+        mail_transport.settings()
+        return 'resend-smtp'
     with server.connect() as db:
         schema(db)
         row = db.execute("SELECT value FROM gmail_connection WHERE key='refresh'").fetchone()
@@ -122,23 +129,24 @@ def access_token():
 
 def compose(recipient, subject, body, attachment=None):
     message = EmailMessage()
-    message['From'] = 'EventsBooth360 <' + OWNER + '>'
+    message['From'] = 'EventsBooth360 <' + (mail_transport.sender(recipient, OWNER) if mail_transport.enabled() else OWNER) + '>'
     message['To'] = recipient
     message['Subject'] = subject
-    message['Reply-To'] = OWNER
+    reply = mail_transport.reply_to() if mail_transport.enabled() else OWNER
+    message['Reply-To'] = reply
     # Remove the older plain footer when processing an already queued message.
     old_footer = '\nEventsBooth360 - 06 11 57 46 64\nhttps://eventsbooth360.fr'
     body = body.replace(old_footer, '').rstrip()
-    message.set_content(body + '\n\nEventsBooth360\nL’expérience vidéo à 360°\n06 11 57 46 64\neventsbooth360@gmail.com\nhttps://eventsbooth360.fr\n')
+    message.set_content(body + '\n\nEventsBooth360\nL’expérience vidéo à 360°\n06 11 57 46 64\n' + reply + '\nhttps://eventsbooth360.fr\n')
     content = escape(body).replace('\n', '<br>')
     message.add_alternative('<!doctype html><html lang="fr"><body style="margin:0;padding:24px;background:#fff;color:#171a20;font:15px/1.6 Arial,sans-serif">'
         '<div>' + content + '</div>'
-        '<table role="presentation" cellspacing="0" cellpadding="0" style="margin-top:28px;border-top:1px solid #edc87f;padding-top:18px"><tr><td>'
+        '<table role="presentation" cellspacing="0" cellpadding="0" style="margin-top:28px;border-top:1px solid #dbbad1;padding-top:18px"><tr><td>'
         '<img src="cid:eventsbooth360-signature" width="360" height="84" alt="EventsBooth360 - L’expérience vidéo à 360°" style="display:block;width:360px;max-width:100%;height:auto;border:0">'
         '</td></tr><tr><td style="padding-top:12px;font:14px/1.7 Arial,sans-serif;color:#171a20">'
         '<a href="tel:+33611574664" style="color:#171a20;text-decoration:none">06 11 57 46 64</a><br>'
-        '<a href="mailto:eventsbooth360@gmail.com" style="color:#171a20">eventsbooth360@gmail.com</a><br>'
-        '<a href="https://eventsbooth360.fr" style="color:#785820">eventsbooth360.fr</a>'
+        '<a href="mailto:' + escape(reply, quote=True) + '" style="color:#875174">' + escape(reply) + '</a><br>'
+        '<a href="https://eventsbooth360.fr" style="color:#875174">eventsbooth360.fr</a>'
         '</td></tr></table></body></html>', subtype='html')
     logo = (Path(__file__).resolve().parent / 'public' / 'logo-signature.png').read_bytes()
     message.get_payload()[-1].add_related(logo, maintype='image', subtype='png', cid='<eventsbooth360-signature>', disposition='inline', filename='eventsbooth360.png')
@@ -147,6 +155,8 @@ def compose(recipient, subject, body, attachment=None):
 
 def send(recipient, subject, body, token, attachment=None):
     message = compose(recipient, subject, body, attachment)
+    if mail_transport.enabled():
+        return mail_transport.send(message, mail_transport.delivery_key(recipient, subject, body, attachment))
     payload = json.dumps({'raw': base64.urlsafe_b64encode(message.as_bytes()).decode()}).encode()
     req = Request('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', data=payload,
                   headers={'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'})
@@ -157,9 +167,9 @@ def send(recipient, subject, body, token, attachment=None):
 @admin.protected
 def test():
     try:
-        send(OWNER, 'EventsBooth360 - test des mails du site', 'La connexion Gmail du site fonctionne. Ce message de test ne correspond à aucune réservation et ne déclenche aucun paiement ni remboursement.', access_token())
+        send(OWNER, 'EventsBooth360 - test des mails du site', 'Le service d’envoi du site fonctionne. Ce message de test ne correspond à aucune réservation et ne déclenche aucun paiement ni remboursement. Référence du test : ' + secrets.token_hex(8), access_token())
         return jsonify(ok=True)
-    except Exception: return jsonify(error='Envoi non confirmé. Vérifiez Gmail avant de réessayer ou reconnectez le compte.'), 503
+    except Exception: return jsonify(error='Envoi non confirmé. Vérifiez la boîte de réception et le service d’envoi avant de réessayer.'), 503
 
 @bp.post('/api/admin/gmail/pending')
 @admin.protected
@@ -217,7 +227,7 @@ def deliver(bid):
             db.execute("UPDATE cancellation_mail SET status='sending' WHERE booking_id=? AND recipient=?", (bid,recipient))
         status, ident = 'unknown', None
         try: ident = send(recipient,subject,body,token); status = 'sent'
-        except HTTPError: status = 'failed'
+        except (HTTPError, mail_transport.MailRejected): status = 'failed'
         except Exception: pass
         with server.connect() as db:
             db.execute('UPDATE cancellation_mail SET status=?,message_id=? WHERE booking_id=? AND recipient=?', (status,ident,bid,recipient))
@@ -265,7 +275,7 @@ def deliver_reservation(bid):
             if document:ident=send(recipient,subject,body,token,attachment=('Reservation-EventsBooth360-'+str(document[0])+'.pdf',base64.b64decode(document[1])))
             else:ident=send(recipient,subject,body,token)
             status='sent'
-        except HTTPError: status = 'failed'
+        except (HTTPError, mail_transport.MailRejected): status = 'failed'
         except Exception: pass
         with server.connect() as db:
             db.execute('UPDATE reservation_mail SET status=?,message_id=? WHERE booking_id=? AND recipient=?', (status,ident,bid,recipient))

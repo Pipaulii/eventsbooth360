@@ -83,6 +83,14 @@ class GmailTest(unittest.TestCase):
     def test_no_connection_keeps_messages_pending(self):
         self.seed();gmail_mail.deliver('b')
         with server.connect() as db:self.assertEqual({r[0] for r in db.execute('SELECT status FROM cancellation_mail').fetchall()},{'pending'})
+    def test_resend_timeout_preserves_outbox_and_is_not_retried(self):
+        import mail_transport
+        self.seed()
+        with patch.object(payments,'config',return_value={'MAIL_PROVIDER':'resend','SMTP_PASSWORD':'re_test_only'}),patch.object(mail_transport.smtplib,'SMTP_SSL') as smtp:
+            smtp.return_value.__enter__.return_value.send_message.side_effect=TimeoutError('ambiguous')
+            gmail_mail.deliver('b');gmail_mail.deliver('b')
+            self.assertEqual(smtp.call_count,2)  # One attempt for each recipient, no retry.
+        with server.connect() as db:self.assertEqual({r[0] for r in db.execute('SELECT status FROM cancellation_mail').fetchall()},{'unknown'})
     def test_test_mail_owner_only(self):
         self.login()
         with patch.object(gmail_mail,'access_token',return_value='mock'),patch.object(gmail_mail,'send') as send:
