@@ -102,7 +102,8 @@ class GmailTest(unittest.TestCase):
         html=message.get_body(preferencelist=('html',)).get_content()
         self.assertIn('&lt;script&gt;',html);self.assertNotIn('<script>',html)
         self.assertIn('cid:eventsbooth360-signature',html)
-        self.assertIn('tel:+33611574664',html)
+        self.assertIn('06 11 57 46 64',html)
+        self.assertNotIn('href="tel:',html)
         self.assertIn('https://eventsbooth360.fr',html)
         images=[part for part in message.walk() if part.get_content_type()=='image/png']
         self.assertEqual(len(images),1)
